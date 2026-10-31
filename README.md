@@ -18,13 +18,18 @@ the screen. No keyboard? The on-screen buttons do the same thing.
 | Crisis Zone (2001) | boots, plays at ~22% of real time | System 23 board, same |
 | Silent Scope (1998) | boots only — the language MCU ROMs are BAD_DUMP, so no sound and no playable level | Konami/Hornet board |
 | Silent Scope 2 (2001) | boots only, same reason | |
-| Time Crisis 3 (2004) / L.A. Machineguns (1998) | not emulated here: no core in this tree covers System Ps2 / Model 2 | shown as locked cabinets |
+| Time Crisis 3 (2004) | not emulated here: System 246 needs a CHD disc image this pipeline has no support for, and its input ports are empty | shown as a locked cabinet |
+| L.A. Machineguns (1998) | tried, does not run: a Model 3 core was built (mame/src/mame/sega/model3.cpp) and the ROMs verify, but the machine draws nothing — 47 s of black frames, MAME's own UI menu included — and the software polygon rasteriser runs at 7–15 fps in WASM. It has no light-gun port either (joystick + 4 buttons) | shown as a locked cabinet |
 
 Two boards are slower than realtime on a normal desktop CPU: that is the emulator, not the page.
 Measured negatives: MAME's frameskip option and disabling sound do **not** raise the frame rate,
 and this MAME build has no selectable 68k core, so there is no remaining performance lever. The
 page keeps those cabinets honest instead of pretending — the audio output follows the machine's
 own pace rather than holding a stuck tone.
+
+Wii arcade cabinets are the next thing to add, and they cannot come through this pipeline: MAME
+0.289 has no Wii driver and Wii ISOs are not usable here. That line of work goes through Dolphin's
+own WebAssembly port instead.
 
 ## How it is served
 

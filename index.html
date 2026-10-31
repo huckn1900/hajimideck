@@ -1631,7 +1631,7 @@ const LOCKED = [
   { id: "timecrs3", title: "Time Crisis 3", year: "2003", maker: "Namco",
     why: "System 246：要 tst1dvd0.chd（光盘），这个 WASM 管线没有 CHD 支持；INPUT_PORTS_START(system246) 是空的（光枪走 V185 I/O PCB，driver 没建模），driver 还标 MACHINE_NO_SOUND。ROM 已下并校验 OK/WARN，只是这里跑不出画面声音与枪输入。" },
   { id: "lamachin", title: "L.A. Machineguns", year: "1998", maker: "Sega",
-    why: "Sega Model 3：cores.json 里没有覆盖 model3.cpp 的 core（37 颗 ROM ≈136 MB），并且 INPUT_PORTS_START(model3) 完全没有光枪端口（只有 lostwsga 有），所以没法按「鼠标左键 = 射击」来玩。" },
+    why: "Sega Model 3：已经试过。cores.json 加了 model3 core（src/mame/sega/model3.cpp，34 MB wasm / 5.9 MB gz），ROM 也补齐并校验 OK（lamachin.zip + segabill.zip）。机器能起机、音频能跑，但一帧画面都画不出来：无头实测连续 47 秒全黑（lit 0 / max 0），连 MAME 自己的 F2 菜单也是黑的；软件多边形光栅化在这个 WASM 里只有 7–15 帧/s。而且 INPUT_PORTS_START(model3) 没有光枪端口（只有 lostwsga 有），是摇杆 + 4 按钮，没法按「鼠标左键 = 射击」玩。所以这台仍不上电；以后往网页里加 Wii 街机走 Dolphin 那条路。" },
 ];
 for (const g of LOCKED) {
   const tile = document.createElement("div");
