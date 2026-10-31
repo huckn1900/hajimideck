@@ -1,0 +1,11 @@
+{
+  "rompath": "roms/",
+  "cores": [
+    "namcos22",
+    "hornet"
+  ],
+  "coreReady": true,
+  "wasmBytes": 6191548,
+  "wasmPlainBytes": 30158913,
+  "note": "GitHub Pages 静态版：没有服务器探测，文件都在仓库里。核心是 .wasm.gz（页面内用 DecompressionStream 解压；Chrome 不支持 br），ROM 是 zip（MAME 自己解）。"
+}
