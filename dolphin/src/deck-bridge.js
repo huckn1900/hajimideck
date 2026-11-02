@@ -177,6 +177,10 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
   };
   // Dolphin's own comment on point size: "small values (2-4) seem to be very typical".
   const IR_POINT_SIZE = 3;
+  // Half the distance between the two clusters, in camera pixels. Kept small on purpose: a wide pair
+  // would push one cluster off the camera field at an edge aim, and a clamped cluster moves the
+  // midpoint the game derives the aim from. 8 px is under a percent of the field either way.
+  const IR_LED_SPACING = 8;
   const aiming = { irx: WIIMOTE_IR.CAMERA_RES_X / 2, iry: WIIMOTE_IR.CAMERA_RES_Y / 2, firing: false };
   // Some Wii arcade ports open with a two-player screen that only completes if a second remote is
   // answering: Gunblade NY's "Select the ID you would like to use. Player1 / Player2" panel waits for
@@ -188,8 +192,18 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
   })();
   const sendPointer = () => {
     const buttons = irButtonBits();
+    // A real remote never reports a single dot: its camera sees the sensor bar's two LED clusters,
+    // and Wii titles that ask the player to aim at the screen treat a report whose second cluster is
+    // missing as 「the Zapper is not pointing at the TV」. Measured: HOTD's Zapper tutorial looped back
+    // to itself through eight presses while a one-point report was live, then created its save file
+    // as soon as a shot went in — the screens that ask for aim are the ones that need the pair.
+    // The aim stays exactly where the pointer is; the two clusters straddle it symmetrically, so a
+    // game reading either point, or their midpoint, gets the same coordinates.
     const points = aiming.firing
-      ? [{ x: aiming.irx, y: aiming.iry, size: IR_POINT_SIZE }]
+      ? [
+          { x: aiming.irx - IR_LED_SPACING, y: aiming.iry, size: IR_POINT_SIZE },
+          { x: aiming.irx + IR_LED_SPACING, y: aiming.iry, size: IR_POINT_SIZE },
+        ]
       : [];
     for (const index of aimPartners) host.setWiimoteIR?.({ index, buttons, points });
   };
