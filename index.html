@@ -1220,7 +1220,7 @@ const GBLA_CAB = {
     ["菜单 / 开始", "X 或 1（A / Start）"],
     ["投币", "这台没有投币口：Wii 吃碟片，不吃硬币"],
   ],
-  notes: "",
+  notes: "实测（截图 walk-gbla12 / gbla17 / gbla20 为证）：这张碟能起机，画面稳定、帧率与音频都在跑，红外瞄准通道实测有效——核心收到过 index 1 的按键位与一个红外点（x615 y306），按按键时画面确实往前走（从选 ID 那页走到了腕带教程页）。它开机先弹 Nintendo 的外设教程（「Wii Zapper Use」、「Put on and tighten the wrist strap」），再弹分级页（「Online Interactions Not Rated by the ESRB」），然后停在「Select the ID you would like to use.」：这台 Wii 版要先建一个玩家 ID 才进关卡，它认的是插在 Zapper 里的遥控器，不认投币。所以这台柜的状态是：起机、教程 / 分级 / 选 ID 页实测可见，关卡还没通过。",
   poster: `<svg viewBox="0 0 300 172" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="gb" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#120a16"/><stop offset=".5" stop-color="#3a1626"/><stop offset="1" stop-color="#08060d"/>
@@ -1250,7 +1250,7 @@ const HOTD_CAB = {
     ["菜单 / 开始", "X 或 1（A / Start）"],
     ["投币", "这台没有投币口：Wii 吃碟片，不吃硬币"],
   ],
-  notes: "",
+  notes: "实测（截图 walk-hotd4_play60 / walk-hotd6_rest3 / walk-hotd7 为证）：这张碟能起机，并且走到了它自己的标题（「THE HOUSE OF THE DEAD 2 & 3 RETURN · PRESS A · ©SEGA」，两次都拍到）；按 A 之后出现「NOW LOADING」与 SEGA 卡，也拍到过真实场景（一间带梯子的房间，叠着「Saving in progress」写档提示）。和另一张一样，开机先弹 Nintendo 的外设教程。场景画面能出现，但没有连续可玩的一关，所以这台柜的状态是：起机、标题与场景实测可见，关卡未打通。",
   poster: `<svg viewBox="0 0 300 172" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="hd" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#0b1410"/><stop offset=".5" stop-color="#183026"/><stop offset="1" stop-color="#050a08"/>
@@ -1762,7 +1762,7 @@ const LOCKED = [
   { id: "timecrs3", title: "Time Crisis 3", year: "2003", maker: "Namco",
     why: "System 246：要 tst1dvd0.chd（光盘），这个 WASM 管线没有 CHD 支持；INPUT_PORTS_START(system246) 是空的（光枪走 V185 I/O PCB，driver 没建模），driver 还标 MACHINE_NO_SOUND。ROM 已下并校验 OK/WARN，只是这里跑不出画面声音与枪输入。" },
   { id: "lamachin", title: "L.A. Machineguns", year: "1998", maker: "Sega",
-    why: "Sega Model 3：已经试过。cores.json 里有 model3 core（src/mame/sega/model3.cpp），ROM 补齐并校验 OK（lamachin.zip + segabill.zip）。机器能起机、音频能跑，但一帧画面都画不出来：无头实测连续 47 秒全黑（lit 0 / max 0），连 MAME 自己的 F2 菜单也是黑的——MAME 0.289 把所有 Model 3 游戏都标成 MACHINE_NOT_WORKING | MACHINE_IMPERFECT_GRAPHICS，黑屏是这个 driver 自己的状态，不是移植的毛病。光枪其实有端口（model3.cpp:1804-1814 的 LIGHT0_X/Y），瞄准从来不是障碍；这个 WASM 里也没有软件视频路径，「-video software」会被拒（Value software not supported for option video），强行用它 core 直接 abort（missing function: glShadeModel）。Wii 版在 Dolphin 里能跑，但那个引擎只暴露 GameCube 手柄（src/input.js 没有 Wii Remote、没有 IR 指针），没有瞄准输入；也没有一家 ROM 站能提供可跨域下载的碟片文件，约 680 MB 的碟进不了 GitHub Pages 载荷。所以这台不上电，只说明原因。" },
+    why: "Sega Model 3：已经试过。cores.json 里有 model3 core（src/mame/sega/model3.cpp），ROM 补齐并校验 OK（lamachin.zip + segabill.zip）。机器能起机、音频能跑，但一帧画面都画不出来：无头实测连续 47 秒全黑（lit 0 / max 0），连 MAME 自己的 F2 菜单也是黑的——MAME 0.289 把所有 Model 3 游戏都标成 MACHINE_NOT_WORKING | MACHINE_IMPERFECT_GRAPHICS，黑屏是这个 driver 自己的状态，不是移植的毛病。光枪其实有端口（model3.cpp:1804-1814 的 LIGHT0_X/Y），瞄准从来不是障碍；这个 WASM 里也没有软件视频路径，「-video software」会被拒（Value software not supported for option video），强行用它 core 直接 abort（missing function: glShadeModel）。Wii 版走的是本项目已有的 Dolphin 路线：你放的 Arcade Hits Pack 碟（SQDE8P）在这台引擎里能起机，画面、帧率、音频都在跑，红外瞄准通道（候选核心 1e26f6eb）实测把鼠标瞄准与按键上报成 Wii Remote 的红外数据。但这张碟开机要先建玩家 ID，实测停在「Select the ID you would like to use.」，没走到关卡，所以这台 Model 3 柜不上电，它的 Wii 版在 ARCADE HITS 柜里继续验证。约 680 MB 的碟也进不了 GitHub Pages 载荷（网页拼不出碟，只有玩家自己选的文件能读）。所以这台不上电，只说明原因。" },
 ];
 
 // ---- the second engine: whether it can be powered on is measured, not assumed ----
