@@ -2,6 +2,7 @@
   "rompath": "roms/",
   "cores": [
     "namcos22",
+    "namcos22_r4650_33mhz",
     "hornet"
   ],
   "coreReady": true,

@@ -1080,11 +1080,12 @@ const LIB = [
   },
   {
     id: "crszone", title: "Crisis Zone", year: "2000", maker: "Namco", gun: true,
-    hw: "Namco System Super 223 · CSZ1 MIU 设备 BIOS · 光枪（实体枪 + 踏板）",
+    hw: "Namco System Super 223 · R4650（MIPS III）· CSZ1 MIU 设备 BIOS · 光枪（实体枪 + 踏板）",
+    core: "namcos22_r4650_33mhz",
     roms: ["crszone.zip", "namco_csz1.zip"],
     posterImg: "art/crszone-flyer.jpg", bannerImg: "art/crszone-marquee.jpg",
     keys: [["瞄准", "鼠标（方向键可微调）"], ["射击", "鼠标左键"], ["躲掩体", "鼠标右键"], ["投币", "空格 或 5"], ["开始", "1"], ["2P", "2"]],
-    notes: "driver 直接复用 Time Crisis II 的 JVS 端口表，只把光枪范围换成 0x040..0x33f；namco_csz1.zip 是 CSZ1 枪控制板（GUN-EXTENTION JPN Ver2.05）的 ROM。同样是 Super 223（双 CPU），实测能玩（准星跟鼠标走已验证：换鼠标位置画面就变）：起机时屏幕会先黑一段（那是 SYS23EU2 自检在走），真实时间几分钟后到 ZONE SELECT（园区预览是 3D 多边形），再进到俯视角的 3D 关卡。代价是 ~25% 实时速度：慢动作 + 音频破，来自 CPU 开销，不是画面或音频本身。手机上会换成屏幕按钮（射击/踏板/投币/开始）+ 手指拖屏幕瞄准。",
+    notes: "driver 直接复用 Time Crisis II 的 JVS 端口表，只把光枪范围换成 0x040..0x33f；namco_csz1.zip 是 CSZ1 枪控制板（GUN-EXTENTION JPN Ver2.05）的 ROM。这台的主 CPU 是 IDT R4650（MIPS III，wasm 里只能靠解释器跑每一个周期），MAME 的 driver 按头注释里那句「Super System 23 Evolution 2 = 200MHz」给它记了 BUSCLOCK*6，而同一份文件里的板子笔记记的是 33.3333MHz 的时钟输入（pin 185）。解释器在 wasm 里付不起 6 倍的周期：按上游时钟实测只有 ~20 帧/秒、模拟时间只到真实时间的 34%，而且画面和音频都不是瓶颈（把整个 screen_update 跳过、-sound none、-video none 各自只让比例动几个百分点）。所以本柜用的是本地补丁核心 namcos22_r4650_33mhz：只把主 CPU 时钟改成 BUSCLOCK，帧步仍是 VBL 驱动，游戏时序不变；实测冷启动阶段 ~46 帧/秒、进入稳定画面后 ~38 帧/秒（同一窗口上游核心只有 ~20 帧/秒），模拟时间 ~62–76% 实时。起机先走 SYS23EU2 自检（屏幕会依次出 ROM / BANK / CHROM I/O 测试页，真实时间一两分钟），之后到 attract：真实渲染的 3D 多边形街景（百货商场模特陈列 + INSERT 2 COINS，已用截图验证），准星跟鼠标走（换鼠标位置画面就变）。这台在模拟时间 ~153.6 秒处会停住：设备时钟不再推进、画面不再刷新、按 P 也恢复不了，上游核心也停在同一个数值，所以那是 driver 自己的缺口（MAME 给这台标的是 imperfect），不是本补丁带来的；能验证的是帧率和画面，不是打通整局。手机上会换成屏幕按钮（射击/踏板/投币/开始）+ 手指拖屏幕瞄准。",
     poster: `<svg viewBox="0 0 300 172" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="cz" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#08182a"/><stop offset=".5" stop-color="#14314a"/><stop offset="1" stop-color="#050a12"/>
