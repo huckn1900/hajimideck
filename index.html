@@ -622,6 +622,14 @@
   .tile.locked .tmq { border-color: #22364c; box-shadow: none }
   .tile.locked .coin-door { border-color: #22364c; background: #0a1420 }
   .tile.locked .slot { border-color: #2c4560 }
+  /* A console whose engine is alive but whose disc is not shipped is a different state from a dead
+     machine: the player can bring their own file, so it stays dark but invites a click. */
+  .tile.locked.bring { cursor: pointer; filter: grayscale(.45) brightness(.72) }
+  .tile.locked.bring:hover { translate: 0 -6px; filter: grayscale(.2) brightness(.95) }
+  .tile.locked.bring .tmq { border-color: #3b5c7c }
+  .tile.locked.bring .byo { border-color: rgba(47,216,200,.5); color: var(--pine);
+    background: rgba(47,216,200,.1) }
+  .tile.locked.bring.sel .tmq { border-color: var(--pine); box-shadow: 0 0 18px -4px var(--pine) }
   /* Plinth plate: inset 4 units inside the drawn plinth (x8 w228 → 12..232, y298 h96 → 302..390).
      One plate, one type scale: 10px maker line, 9px pixel chip, 10px UI tag — three rows plus gaps
      fit inside the 88-unit plate at the smallest tile width, so nothing is clipped at any width. */
@@ -1814,16 +1822,24 @@ const engineNeedsFirst = () => engineNeeds().split(" + ")[0] || "CONDITIONS UNME
 // The disc sentence quotes the size the HEAD request measured, so it never guesses at a filesize.
 const cabLockReason = (g) => ENGINE.reason !== null ? ENGINE.reason
   : `碟片没有随本站发布：${(g.disc ?? "disc").split("/").pop()} 是 ${sizeHuman(ENGINE.discs[g.id] || 0)} 的 Wii 光盘镜像，远大于本站的体积预算（要上线得换成更小的碟形式）`;
+// A console cabinet whose engine is alive but whose disc is not shipped is still playable here: the
+// engine mounts through a worker's WORKERFS, which takes a real file the player picks, not bytes the
+// page assembled. Such a cabinet is therefore not dead — it waits for a disc — so it gets its own
+// chip, its own affordance, and the full game table stays reachable through CAB_BY_ID below.
+const CAB_BY_ID = Object.fromEntries(WII_CABS.map((c) => [c.id, c]));
 for (const cab of WII_CABS) {
   if (ENGINE.ready && ENGINE.discs[cab.id]) { LIB.push(cab); continue; }
   // The chip names which check failed — engine files, browser conditions, or the disc — because
   // "not included" would be a lie for a machine whose emulator is already on the page.
+  const bringable = ENGINE.reason === null;
   const chip = !ENGINE.bridge ? "ENGINE NOT SHIPPED"
-    : ENGINE.reason === null ? "ENGINE READY · NO DISC"
+    : bringable ? "ENGINE READY · BRING YOUR DISC"
     : `ENGINE OFFLINE · ${engineNeeds() || "conditions unmet"}`;
   LOCKED.push({ id: cab.id, title: cab.title, year: cab.year, maker: cab.maker,
-    chip,
-    why: `${cabLockReason(cab)}。引擎本身在这台机器上跑通了两轮实测（核心 60–73 帧/s、呈现 57–71 帧/s、游戏速度 100–104%、音频有信号），差的只是上面那一条。` });
+    chip, bring: bringable,
+    why: bringable
+      ? `${cabLockReason(cab)}。引擎在这台机器上跑通了两轮实测（核心 60–73 帧/s、呈现 57–71 帧/s、游戏速度 100–104%、音频有信号），红外瞄准也测到过 ±1 px。**点一下这台机柜，选你自己硬盘上的碟文件（.iso）它就开玩**，鼠标就是枪。`
+      : `${cabLockReason(cab)}。引擎本身在这台机器上跑通了两轮实测（核心 60–73 帧/s、呈现 57–71 帧/s、游戏速度 100–104%、音频有信号），差的只是上面那一条。` });
 }
 
 // ---- tiles ----
@@ -1872,19 +1888,36 @@ for (const [i, g] of LIB.entries()) {
 // ---- locked tiles (LOCKED is declared above, before the shelf) ----
 for (const g of LOCKED) {
   const tile = document.createElement("div");
-  tile.className = "tile locked";
+  tile.className = `tile locked${g.bring ? " bring" : ""}`;
   tile.dataset.id = g.id;
   tile.innerHTML = `${cabSVG(CAB_KIND[g.id] || "lock")}
-    <div class="tmq"><h2>${g.title}</h2><span class="no">OFFLINE</span></div>
+    <div class="tmq"><h2>${g.title}</h2><span class="no">${g.bring ? "BRING DISC" : "OFFLINE"}</span></div>
     <!-- The padlock is drawn in the screen's own proportions (the CRT window is 200×176), so an
         unpowered cabinet shows a dark screen rather than a square image floating in it. -->
     <div class="art"><svg viewBox="0 0 200 176" xmlns="http://www.w3.org/2000/svg">
     <rect width="200" height="176" fill="#050a12"/>
     <g fill="none" stroke="#2a4560" stroke-width="2"><rect x="68" y="78" width="64" height="46" rx="6"/>
       <path d="M82 78v-14a18 18 0 0 1 36 0v14"/></g></svg></div>
-    <div class="coin-door"><span class="slot"></span><span class="doorlabel">OFFLINE</span><i class="lamp no"></i></div>
+    <div class="coin-door"><span class="slot"></span><span class="doorlabel">${g.bring ? "NO DISC" : "OFFLINE"}</span><i class="lamp ${g.bring ? "ok" : "no"}"></i></div>
     <div class="meta"><p>${g.maker} · ${g.year}</p>
-    <span class="chip no">${g.chip || "NO ROM · OFFLINE"}</span><p class="why">${g.why}</p></div>`;
+    <span class="chip ${g.bring ? "byo" : "no"}">${g.chip || "NO ROM · OFFLINE"}</span><p class="why">${g.why}</p></div>`;
+  if (g.bring) {
+    // Engine alive, disc missing: this tile is a button, not a notice. Clicking it runs the cabinet's
+    // own game table, whose mount asks the player for the file the engine can actually read.
+    tile.setAttribute("role", "button");
+    tile.tabIndex = 0;
+    const bring = () => {
+      if ($("stage").classList.contains("on")) return;   // one machine per page
+      tile.classList.add("sel");
+      sessionStorage.setItem("deck-boot", g.id);
+      launch(CAB_BY_ID[g.id]);
+    };
+    tile.onclick = bring;
+    tile.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); bring(); } };
+    tile.setAttribute("aria-label", `${g.title}：引擎已通电，等一张碟 — 点击选你自己硬盘上的碟文件开玩`);
+    rail.append(tile);
+    continue;
+  }
   // An unpowered cabinet stays put: clicking it must not start anything, so it carries no role=button
   // and no Enter handler. The reason is printed on the plinth as a paper notice instead.
   tile.setAttribute("aria-label", `${g.title}：未通电，本管线跑不了`);
@@ -1934,7 +1967,10 @@ $("engineState").title = ENGINE.ready ? sizeMB(ENGINE.wasmBytes) : engineNeeds()
 // Cabinet count on the signage, from the same probe the lamps use: what can actually be switched
 // on right now, not the length of the list.
 const ready = LIB.filter(cabReady).length;
-$("cabCount").textContent = `${ready} ONLINE · ${LOCKED.length} OFFLINE`;
+// A console waiting for a disc the player brings is neither online nor dead, so the signage names it
+// as its own state instead of folding it into OFFLINE.
+const bringable = LOCKED.filter((g) => g.bring).length;
+$("cabCount").textContent = `${ready} ONLINE${bringable ? ` · ${bringable} BRING DISC` : ""} · ${LOCKED.length - bringable} OFFLINE`;
 // The hero's fact chips read from the same numbers as the lamps, so the statement can never claim
 // a cabinet or a payload the page does not actually have.
 $("statCabs").textContent = `${LIB.length + LOCKED.length} CABINETS · ${ready} READY`;
@@ -2299,6 +2335,13 @@ if (again) {
   if (g) {
     select(LIB.indexOf(g));
     launch(g);
+  } else if (LOCKED.some((x) => x.id === again && x.bring)) {
+    // A console this site ships the engine for but not the disc is a real request: it boots by asking
+    // the player for the file. Only an unknown id is a bad request.
+    const tile = rail.querySelector(`[data-id="${again}"]`);
+    tile?.classList.add("sel");
+    $("bootlog").textContent += `这台等一张碟：请选择你硬盘上的碟文件。\n`;
+    launch(CAB_BY_ID[again]);
   } else {
     sessionStorage.removeItem("deck-boot");
   }
