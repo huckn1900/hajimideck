@@ -58,6 +58,10 @@ Everything is static files, so this works on GitHub Pages with no server:
     dolphin/src/         that engine's host code; the audio worklet processor is loaded through
                          import.meta.url, so the directory ships with it
     dolphin/LICENSE      the engine's licence, kept in the site for attribution
+    sw.js                a same-origin service worker that adds Cross-Origin-Opener-Policy and
+                         Cross-Origin-Embedding-Policy to the document response. The engine needs
+                         SharedArrayBuffer, which the browser only gives a cross-origin isolated
+                         page, and Pages cannot set response headers. Only navigations are touched.
 
 Asset paths are page-relative so the whole thing works under a project-page path.
 `status.json` is a static stand-in for the dev server's `/status.json`; the page only reads

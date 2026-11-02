@@ -1776,6 +1776,23 @@ const LOCKED = [
     why: "Sega Model 3：已经试过。cores.json 里有 model3 core（src/mame/sega/model3.cpp），ROM 补齐并校验 OK（lamachin.zip + segabill.zip）。你放到桌面的那份「L-A-Machineguns-Rage-of-the-Machines_Arcade_JA\lamachin.zip」我逐文件比对过：37 个文件，与 jamma/roms/lamachin.zip 的 SHA256 全部相同——它是同一套街机 ROM（mpr-*.5…41 这些 Model 3 芯片），不是单独的 Wii 碟，所以没有新增可跑的东西。这套 ROM 只走 jamma/MAME 路线（不用 Dolphin）：刚用它重跑一次 jamma 自带的例页（model3 core + lamachin driver + lamachin.zip / segabill.zip），起机成功（booted lamachin），循环也在跑，但连续 62 秒一帧画面都画不出来（全黑：lit 0 / max 0），呈现帧率约 9 fps、低于实时；投币 + 开始、鼠标射击都没有反馈，连 MAME 自己的 F2 菜单也是黑的——MAME 0.289 把所有 Model 3 游戏都标成 MACHINE_NOT_WORKING | MACHINE_IMPERFECT_GRAPHICS，黑屏是这个 driver 自己的状态，不是移植的毛病。光枪其实有端口（model3.cpp:1804-1814 的 LIGHT0_X/Y），瞄准从来不是障碍；这个 WASM 里也没有软件视频路径，「-video software」会被拒（Value software not supported for option video），强行用它 core 直接 abort（missing function: glShadeModel）。Wii 版走的是本项目已有的 Dolphin 路线，在 ARCADE HITS 柜里验证：那张合碟（SQDE8P）能起机，画面 / 帧率 / 音频都在跑，红外瞄准实测把鼠标瞄准确认到 ±1 px；实测它只走到 Gunblade NY 的内容（建 ID → 记分页输入名字），没出现 L.A. Machineguns 的选人页。约 4.7 GB 的碟也进不了 GitHub Pages 载荷（网页拼不出碟，只有玩家自己选的文件能读）。所以这台不上电，只说明原因。" },
 ];
 
+// ---- cross-origin isolation, on a host that cannot send headers ----
+// SharedArrayBuffer — which the Wii engine needs — is only handed out when the document is
+// cross-origin isolated, and isolation comes from response headers, which GitHub Pages cannot set.
+// A same-origin service worker can add the two headers to the document response it produces, so the
+// page registers the worker and reloads once. Where the host already isolates the page (the dev
+// server does), nothing here runs; if the browser still refuses after the reload, the flag stops a
+// reload loop and the engine states its missing condition as it always does.
+const SW_RELOAD = "deck-sw-reload";
+if (!window.crossOriginIsolated && navigator.serviceWorker && !sessionStorage.getItem(SW_RELOAD)) {
+  sessionStorage.setItem(SW_RELOAD, "1");
+  try {
+    await navigator.serviceWorker.register("./sw.js");
+    await navigator.serviceWorker.ready;
+    location.reload();
+  } catch { /* no worker available: the engine's own probe reports what is missing */ }
+}
+
 // ---- the second engine: whether it can be powered on is measured, not assumed ----
 // Three checks decide where Mario Kart Wii lands: the engine is served (status.json says so), the
 // bridge loads and the browser can give the engine what it needs (WebGPU + SharedArrayBuffer, and
