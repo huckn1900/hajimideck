@@ -8,6 +8,7 @@ import {
   INPUT_STATE_SLOT_COUNT,
   writeInputStateSnapshot
 } from "./input-transport.js";
+import { normalizeWiimotePointer } from "./input.js";
 import {
   countTransferBytes,
   createCausalTelemetry,
@@ -58,6 +59,7 @@ export class UpstreamWorkerAdapter {
     fastSoftwareRaster = 0,
     softwareTevHotCaseMode = 0,
     xfbFastPaths = 0,
+    wiimoteInput = false,
     correctTimeDrift = false,
     coreLog = false,
     efbDiag = false,
@@ -153,6 +155,10 @@ export class UpstreamWorkerAdapter {
     this.fastSoftwareRaster = Math.min(3, Math.max(0, Number(fastSoftwareRaster) || 0));
     this.softwareTevHotCaseMode = (Number(softwareTevHotCaseMode) || 0) & 3;
     this.xfbFastPaths = (Number(xfbFastPaths) || 0) & 3;
+    this.wiimoteInput = Boolean(wiimoteInput);
+    this.lastWiimoteSignature = null;
+    this.wiimoteGeneration = 0;
+    this.wiimoteTelemetry = { sendCount: 0, lastPointer: null };
     this.correctTimeDrift = Boolean(correctTimeDrift);
     this.coreLog = Boolean(coreLog);
     this.efbDiag = Boolean(efbDiag);
@@ -354,6 +360,7 @@ export class UpstreamWorkerAdapter {
       fastSoftwareRaster: this.fastSoftwareRaster,
       softwareTevHotCaseMode: this.softwareTevHotCaseMode,
       xfbFastPaths: this.xfbFastPaths,
+      wiimoteInput: this.wiimoteInput,
       correctTimeDrift: this.correctTimeDrift,
       coreLog: this.coreLog,
       efbDiag: this.efbDiag,
@@ -573,6 +580,32 @@ export class UpstreamWorkerAdapter {
       inputGeneration
     });
     this.inputTelemetry.mainPostCount += 1;
+  }
+
+  // Wii Remote aiming. The core hook receives the IR objects directly: a size of 0
+  // hides that object, which is exactly what a real remote reports while the
+  // trigger is not held. Clamping and button masking live in input.js so the worker
+  // path and the main-thread path cannot drift apart.
+  setWiimoteIR(pointer = {}) {
+    if (!this.loaded) {
+      return;
+    }
+    const { index, buttons, points, signature } = normalizeWiimotePointer(pointer);
+    if (signature === this.lastWiimoteSignature) {
+      return;
+    }
+    this.lastWiimoteSignature = signature;
+    this.wiimoteTelemetry.sendCount += 1;
+    this.wiimoteTelemetry.lastPointer = { index, buttons, points };
+    this.post("setWiimoteIR", { index, buttons, points, generation: ++this.wiimoteGeneration });
+  }
+
+  async wiimoteStats() {
+    if (!this.loaded) {
+      return { available: false };
+    }
+    const response = await this.request("wiimoteStats", {});
+    return { available: true, ...response, mainSendCount: this.wiimoteTelemetry.sendCount };
   }
 
   runFrame() {

@@ -94,6 +94,57 @@ export const DEFAULT_PAD_STATE = Object.freeze({
   analogB: 0
 });
 
+// The Wii Remote pointer port, declared once so every layer clamps to the same geometry.
+// The numbers come from the engine's own device code:
+//   Source/Core/Core/HW/WiimoteEmu/Camera.h        camera 1024x768, point size capped at 15
+//   Source/Core/Core/HW/WiimoteCommon/WiimoteReport.h  ButtonData::BUTTON_MASK = ~0x60e0
+// The masked bits are buttons; the unmasked ones carry accelerometer data and must not be
+// overwritten by a browser pointer.
+export const WIIMOTE_IR = Object.freeze({
+  CHANNELS: 4,
+  CAMERA_RES_X: 1024,
+  CAMERA_RES_Y: 768,
+  MAX_POINT_SIZE: 15,
+  MAX_POINTS: 2,
+  BUTTON_MASK: 0x9f1f
+});
+
+// Button bit positions from WiimoteCommon::ButtonData's bitfield, in the order the struct
+// declares them. The accelerometer bits are deliberately absent: they belong to the core.
+export const WIIMOTE_BUTTON_BITS = Object.freeze({
+  left: 1 << 0,
+  right: 1 << 1,
+  down: 1 << 2,
+  up: 1 << 3,
+  plus: 1 << 4,
+  two: 1 << 8,
+  one: 1 << 9,
+  b: 1 << 10,
+  a: 1 << 11,
+  minus: 1 << 12,
+  home: 1 << 15
+});
+
+// Normalises whatever the host saw into the pointer the core accepts. A remote reports no IR
+// object while the trigger is out, so an empty `points` list is a valid payload, not a failure.
+export function normalizeWiimotePointer(pointer = {}) {
+  const index = Math.min(WIIMOTE_IR.CHANNELS - 1, Math.max(0, Number(pointer.index) || 0)) | 0;
+  const buttons = (Number(pointer.buttons) || 0) & WIIMOTE_IR.BUTTON_MASK;
+  const points = (Array.isArray(pointer.points) ? pointer.points : [])
+    .slice(0, WIIMOTE_IR.MAX_POINTS)
+    .map((point) => ({
+      x: Math.min(WIIMOTE_IR.CAMERA_RES_X - 1, Math.max(0, Number(point?.x) || 0)) | 0,
+      y: Math.min(WIIMOTE_IR.CAMERA_RES_Y - 1, Math.max(0, Number(point?.y) || 0)) | 0,
+      size: Math.min(WIIMOTE_IR.MAX_POINT_SIZE, Math.max(0, Number(point?.size) || 0)) | 0
+    }));
+  return {
+    index,
+    buttons,
+    points,
+    signature: `${index}:${buttons}:${points.map((point) => `${point.x},${point.y},${point.size}`).join(":")}`
+  };
+}
+
 const GAMEPAD_STATE_FIELDS = Object.freeze([
   "mask",
   "stickX",

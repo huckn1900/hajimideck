@@ -6,6 +6,7 @@ import {
   sanitizeDiscFileName,
   verifyUpstreamCoreWasm
 } from "./upstream-worker-protocol.js";
+import { normalizeWiimotePointer } from "./input.js";
 
 const MIN_FULL_BOOT_BYTES = 16 * 1024 * 1024;
 
@@ -28,7 +29,8 @@ export class UpstreamMainThreadAdapter {
     presentationScale = 1,
     oglTestClear = false,
     fastSoftwareRaster = 0,
-    xfbFastPaths = 0
+    xfbFastPaths = 0,
+    wiimoteInput = false
   } = {}) {
     this.coreUrl = coreUrl;
     this.expectedCoreSha256 = expectedCoreSha256;
@@ -48,6 +50,10 @@ export class UpstreamMainThreadAdapter {
     this.oglTestClear = Boolean(oglTestClear);
     this.fastSoftwareRaster = Math.min(3, Math.max(0, Number(fastSoftwareRaster) || 0));
     this.xfbFastPaths = (Number(xfbFastPaths) || 0) & 3;
+    this.wiimoteInput = Boolean(wiimoteInput);
+    this.lastWiimoteSignature = null;
+    this.wiimoteGeneration = 0;
+    this.wiimoteTelemetry = { sendCount: 0, lastPointer: null };
     this.module = null;
     this.api = null;
     this.loaded = false;
@@ -111,6 +117,7 @@ export class UpstreamMainThreadAdapter {
       dolphinOglTestClear: this.oglTestClear,
       dolphinFastSoftwareRaster: this.fastSoftwareRaster,
       dolphinXfbFastPaths: this.xfbFastPaths,
+      dolphinWiimoteInput: this.wiimoteInput,
       locateFile: (path) => new URL(path, coreUrl).href,
       print: (message) => this.onStatus(String(message)),
       printErr: (message) => this.onStatus(String(message)),
@@ -201,6 +208,17 @@ export class UpstreamMainThreadAdapter {
                 ]
               )
           : null,
+      // Wii Remote IR channel. The core only accepts these when it was built with
+      // the browser-Wii Remote patch (core.cpp initialises an emulated remote when
+      // Module['dolphinWiimoteInput'] is set); older cores return null here.
+      // Coordinates are IR-camera space (0..1023 x 0..767); size 0 hides an object.
+      setWiimoteIR: optionalCwrap(
+        "SetWiimoteIR",
+        "number",
+        ["number", "number", "number", "number", "number", "number", "number", "number", "number"]
+      ),
+      wiimoteUpdateCount: optionalCwrap("DolphinWeb_WiimoteUpdateCount", "number", []),
+      wiimoteBuildCalls: optionalCwrap("DolphinWeb_WiimoteBuildCalls", "number", []),
       runFrame: cwrap("RunFrame", null, []),
       frameWidth: cwrap("FrameWidth", "number", []),
       frameHeight: cwrap("FrameHeight", "number", []),
@@ -440,6 +458,51 @@ export class UpstreamMainThreadAdapter {
 
   setInputState(state) {
     this.api?.setInputState?.(state);
+  }
+
+  // Same pointer contract the worker adapter sends — both go through the shared
+  // normaliser in input.js — so the core receives the IR objects directly, and
+  // size 0 hides an object (what a real remote reports when the trigger is
+  // released). Button bits stay inside ButtonData::BUTTON_MASK.
+  setWiimoteIR(pointer = {}) {
+    if (!this.loaded) {
+      return;
+    }
+    const { index, buttons, points, signature } = normalizeWiimotePointer(pointer);
+    if (signature === this.lastWiimoteSignature) {
+      return;
+    }
+    this.lastWiimoteSignature = signature;
+    this.wiimoteGeneration += 1;
+    this.wiimoteTelemetry.sendCount += 1;
+    this.wiimoteTelemetry.lastPointer = { index, buttons, points };
+    const first = points[0] ?? {};
+    const second = points[1] ?? {};
+    this.api?.setWiimoteIR?.(
+      index,
+      buttons,
+      first.x ?? 0,
+      first.y ?? 0,
+      first.size ?? 0,
+      second.x ?? 0,
+      second.y ?? 0,
+      second.size ?? 0,
+      this.wiimoteGeneration
+    );
+  }
+
+  wiimoteStats() {
+    if (!this.loaded) {
+      return { available: false };
+    }
+    return {
+      available: true,
+      requested: this.wiimoteInput,
+      exported: typeof this.api?.setWiimoteIR === "function",
+      updates: this.api?.wiimoteUpdateCount?.() ?? 0,
+      buildCalls: this.api?.wiimoteBuildCalls?.() ?? 0,
+      pointer: this.wiimoteTelemetry.lastPointer
+    };
   }
 
   readFrameRgba() {

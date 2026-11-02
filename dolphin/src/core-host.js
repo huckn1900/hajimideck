@@ -6,6 +6,7 @@ import {
   DEFAULT_UPSTREAM_CORE_URL,
   requestedLegacyOneWayAck,
   requestedSoftwareTevHotCaseMode,
+  requestedWiimoteInput,
   requestedXfbFastPaths,
   requestedUpstreamCoreBuild
 } from "./upstream-worker-protocol.js";
@@ -100,6 +101,8 @@ export class EmulatorHost {
     this.fastSoftwareRaster = requestedFastSoftwareRaster();
     this.softwareTevHotCaseMode = requestedSoftwareTevHotCaseMode(window.location.search);
     this.xfbFastPaths = requestedXfbFastPaths(window.location.search);
+    // A Wii Remote is only built when a cabinet actually aims with one.
+    this.wiimoteInput = requestedWiimoteInput(window.location.search);
     this.correctTimeDrift = requestedCorrectTimeDrift();
     this.coreLog = requestedCoreLog();
     this.efbDiag = requestedEfbDiag();
@@ -331,7 +334,8 @@ export class EmulatorHost {
             presentationScale: this.presentationScale,
             oglTestClear: this.oglTestClear,
             fastSoftwareRaster: this.fastSoftwareRaster,
-            xfbFastPaths: this.xfbFastPaths
+            xfbFastPaths: this.xfbFastPaths,
+            wiimoteInput: this.wiimoteInput
           })
         : this.coreKind === "upstream"
         ? new UpstreamWorkerAdapter({
@@ -384,6 +388,7 @@ export class EmulatorHost {
             fastSoftwareRaster: this.fastSoftwareRaster,
             softwareTevHotCaseMode: this.softwareTevHotCaseMode,
             xfbFastPaths: this.xfbFastPaths,
+            wiimoteInput: this.wiimoteInput,
             correctTimeDrift: this.correctTimeDrift,
             coreLog: this.coreLog,
             efbDiag: this.efbDiag,
@@ -638,6 +643,18 @@ export class EmulatorHost {
   setInputState(inputState) {
     this.buttonMask = inputState?.mask >>> 0;
     this.adapter.setInputState?.(inputState);
+  }
+
+  // Wii Remote pointer for lightgun cabinets. The adapter owns the masking;
+  // an adapter without the channel simply drops the write.
+  setWiimoteIR(pointer) {
+    this.adapter.setWiimoteIR?.(pointer);
+  }
+
+  // The worker answers this as a request/reply, so the caller must await it; the main-thread
+  // adapter answers synchronously and an awaiting caller still gets the value.
+  async wiimoteStats() {
+    return await (this.adapter.wiimoteStats?.() ?? { available: false });
   }
 
   saveState() {

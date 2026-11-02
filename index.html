@@ -1199,6 +1199,79 @@ const WII_CAB = {
     </svg>`,
 };
 
+// ---- the other two consoles: Namco's Wii arcade packs, from the discs on this machine ----
+// These are the two packs placed on the Desktop as RVZ. The engine shipped here has no RVZ reader —
+// RVZBlob.cpp is not part of this wasm core's DiscIO — so both packs were converted to plain ISOs
+// with Dolphin's own release tool (DolphinTool convert -f iso). Their disc ids read at offset 0 are
+// SQDE8P and RHDE8P; both are multi-game discs, and this engine boots the disc's first partition
+// (GetGamePartition()), so what a cabinet actually plays is whatever that partition holds. The notes
+// below say which, measured, not guessed.
+// A lightgun cabinet on this engine aims through the Wii Remote's infrared camera, which only exists
+// in the candidate core (SetWiimoteIR), so these two cabinets ask for that core id when they boot.
+const IR_CORE = "1e26f6eb108ca1a4939394607f958132b54c5ecd03248e6b6cae9dc49ef4678c";
+
+const GBLA_CAB = {
+  id: "arcadehits", title: "Gunblade NY & L.A. Machineguns", year: "1996–1998", maker: "Namco",
+  engine: "dolphin", disc: "disc/arcade-hits-usa.iso", roms: [], gun: "aim",
+  hw: "Nintendo Wii（Revolution）· PowerPC Revolution + ATI Hollywood · 碟片 SQDE8P（NTSC-U，4.7 GB，你的 RVZ 转成的 ISO）· 两张 Namco 光枪游戏合在一张碟上 · 引擎：Dolphin 的 WebAssembly 移植 + 带 SetWiimoteIR 的候选核心（红外瞄准），不是 MAME",
+  keys: [
+    ["瞄准", "移动鼠标（映射到 Wii Remote 红外摄像头的坐标系 1024×768）"],
+    ["开枪", "鼠标左键（按住才上报红外点，和真实遥控器一样：松开扳机红外块是空的）"],
+    ["菜单 / 开始", "X 或 1（A / Start）"],
+    ["投币", "这台没有投币口：Wii 吃碟片，不吃硬币"],
+  ],
+  notes: "",
+  poster: `<svg viewBox="0 0 300 172" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="gb" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#120a16"/><stop offset=".5" stop-color="#3a1626"/><stop offset="1" stop-color="#08060d"/>
+      </linearGradient></defs>
+      <rect width="300" height="172" fill="url(#gb)"/>
+      <g fill="#1b0f1b"><rect x="0" y="126" width="300" height="46"/><rect x="18" y="96" width="60" height="34"/><rect x="236" y="88" width="52" height="42"/></g>
+      <g fill="none" stroke="#ff7a4f" stroke-width="2.2">
+        <path d="M40 120v-44h10v44"/><path d="M250 120v-52h12v52"/>
+        <circle cx="150" cy="76" r="26"/>
+      </g>
+      <g stroke="#ffb27a" stroke-width="1.4" opacity=".7">
+        <path d="M150 42v-10M150 110v10M112 76h-10M188 76h10"/>
+        <path d="M96 104l-14 16M204 104l14 16"/>
+      </g>
+      <g fill="#ffb27a" opacity=".75"><circle cx="158" cy="84" r="3"/><rect x="146" y="70" width="8" height="8"/></g>
+      <text x="16" y="26" fill="#ff7a4f" font-family="'Pixelify Sans','Arcade',monospace" font-size="13" letter-spacing="3">ARCADE HITS</text>
+    </svg>`,
+};
+
+const HOTD_CAB = {
+  id: "hotd23", title: "House of the Dead 2 & 3 Return", year: "1998–2001", maker: "Namco",
+  engine: "dolphin", disc: "disc/hotd2-3-return-usa.iso", roms: [], gun: "aim",
+  hw: "Nintendo Wii（Revolution）· PowerPC Revolution + ATI Hollywood · 碟片 RHDE8P（NTSC-U，4.7 GB，你的 RVZ 转成的 ISO）· 二代与三代合成一张碟的回炉版 · 引擎：Dolphin 的 WebAssembly 移植 + 带 SetWiimoteIR 的候选核心（红外瞄准），不是 MAME",
+  keys: [
+    ["瞄准", "移动鼠标（映射到 Wii Remote 红外摄像头的坐标系 1024×768）"],
+    ["开枪", "鼠标左键（按住才上报红外点）"],
+    ["菜单 / 开始", "X 或 1（A / Start）"],
+    ["投币", "这台没有投币口：Wii 吃碟片，不吃硬币"],
+  ],
+  notes: "",
+  poster: `<svg viewBox="0 0 300 172" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="hd" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#0b1410"/><stop offset=".5" stop-color="#183026"/><stop offset="1" stop-color="#050a08"/>
+      </linearGradient></defs>
+      <rect width="300" height="172" fill="url(#hd)"/>
+      <g fill="#0d1a14"><rect x="0" y="124" width="300" height="48"/><rect x="26" y="98" width="54" height="30"/><rect x="228" y="92" width="58" height="36"/></g>
+      <g fill="none" stroke="#7dffb2" stroke-width="2.2">
+        <circle cx="146" cy="78" r="24"/><circle cx="146" cy="78" r="7"/>
+        <path d="M146 44v-12M146 112v12M100 78h-12M192 78h12"/>
+      </g>
+      <g fill="#7dffb2" opacity=".65">
+        <path d="M74 118q6-14 16-6q10 8 4 18h-20z"/>
+        <path d="M216 116q8-12 18-4q8 8 2 16h-20z"/>
+      </g>
+      <path d="M146 78l62 44" stroke="#7dffb2" stroke-width="1.3" opacity=".5"/>
+      <text x="16" y="26" fill="#7dffb2" font-family="'Pixelify Sans','Arcade',monospace" font-size="13" letter-spacing="3">HOTD 2 · 3</text>
+    </svg>`,
+};
+
+const WII_CABS = [WII_CAB, GBLA_CAB, HOTD_CAB];
+
 const params = new URLSearchParams(location.search);
 // ?core=<name> points the joystick cabinets at another build of the core (A/B a relink without
 // editing the deck); per-game g.core still wins for the other cores. Declared after `params`
@@ -1493,6 +1566,11 @@ const rail = $("rail");
 // path is shown from its tail with an explicit leading ellipsis — an accidental mid-path cut reads
 // as a bug — and the full path stays available on hover.
 const sizeMB = (bytes) => `${(bytes / 1048576).toFixed(1)} MB`;
+// Wii discs are gigabyte-sized, so a lock sentence needs a unit a reader can actually parse; the MB
+// readout above stays for core bytes.
+const sizeHuman = (bytes) => bytes >= 1073741824
+  ? `${(bytes / 1073741824).toFixed(2)} GB`
+  : `${(bytes / 1048576).toFixed(1)} MB`;
 const status = await fetch("status.json").then((r) => r.json()).catch(() => null);
 $("coreState").textContent = status?.coreReady ? sizeMB(status.wasmBytes) : "NOT BUILT";
 $("romPath").textContent = status?.rompath
@@ -1525,6 +1603,8 @@ const CAB_KIND = {
   sscope: "scope",            // aiming goes through AD_STICK, so a scoped rifle, not a pistol
   sscope2: "scope",
   mkwii: "console",           // not an upright cabinet: a Wii console, driven by a GameCube pad
+  arcadehits: "wremote",      // the same console, but these two games aim with a Wii Remote's IR camera
+  hotd23: "wremote",
 };
 
 // Shared gradient defs. Duplicate ids across tiles resolve to the first one, and every copy is
@@ -1603,6 +1683,20 @@ function cabControls(kind) {
         <rect x="136" y="236" width="36" height="12" rx="5" fill="${dark}" stroke="${steel}" stroke-width="1.4"/>
         <circle cx="146" cy="242" r="4" fill="none" stroke="${chrome}" stroke-width="1.2"/>
         <path d="M162 238h8M166 238v8" stroke="${chrome}" stroke-width="1.2"/></g>`;
+    case "wremote":
+      // The same Wii console, but these games are aimed with a Wii Remote, not a lightgun port: the
+      // bar with the A button, and the infrared camera's sight, which is what the pointer really
+      // comes from on this engine.
+      return `<g>
+        <rect x="24" y="224" width="24" height="32" rx="3" fill="${dark}" stroke="${chrome}" stroke-width="1.5"/>
+        <path d="M30 229h12" stroke="${chrome}" stroke-width="2"/>
+        <circle cx="36" cy="248" r="3" fill="var(--tc)"/>
+        <rect x="62" y="234" width="44" height="12" rx="6" fill="${dark}" stroke="${chrome}" stroke-width="1.5"/>
+        <circle cx="76" cy="240" r="4" fill="var(--tc)" stroke="${chrome}" stroke-width="1.2"/>
+        <path d="M90 236h10M94 236v8" stroke="${steel}" stroke-width="1.2"/>
+        <circle cx="128" cy="240" r="10" fill="none" stroke="var(--tc)" stroke-width="1.6"/>
+        <path d="M128 230v20M118 240h20" stroke="var(--tc)" stroke-width="1.1"/>
+        <rect x="150" y="234" width="34" height="12" rx="3" fill="${dark}" stroke="${steel}" stroke-width="1.4"/></g>`;
     default:
       // A machine nobody can play: nothing to grip. Show the lock, not a control that isn't wired.
       return `<g>
@@ -1678,7 +1772,7 @@ const LOCKED = [
 // or in-memory bytes would not work either — the engine mounts through a worker's WORKERFS, which
 // needs a file with a name. Whatever fails is written into the lock's reason verbatim: the emulator
 // itself is proven playable locally, so a lock here is about this deployment, not about the engine.
-const ENGINE = { bridge: null, ready: false, reason: "引擎未随本站发布", wasmBytes: 0 };
+const ENGINE = { bridge: null, ready: false, reason: "引擎未随本站发布", wasmBytes: 0, discs: {} };
 if (status?.dolphinReady) {
   ENGINE.wasmBytes = Number(status.dolphinWasmBytes) || 0;
   try { ENGINE.bridge = await import("./dolphin/src/deck-bridge.js"); } catch { ENGINE.bridge = null; }
@@ -1687,9 +1781,13 @@ if (status?.dolphinReady) {
   } else {
     ENGINE.reason = ENGINE.bridge.dolphinBlockReason(ENGINE.bridge.dolphinEnv());
     if (ENGINE.reason === null) {
-      const head = await fetch(WII_CAB.disc, { method: "HEAD" }).catch(() => null);
-      ENGINE.reason = head?.ok ? null
-        : "碟片没有随本站发布：RMCE01 是 2.59 GB 的 Wii 光盘镜像，远大于本站的体积预算（要上线得换成更小的碟形式）";
+      // ENGINE.ready only means the engine can run in this browser. Whether a given console cabinet
+      // is powered is a second question — its own disc has to be served here — so each cabinet gets
+      // its own HEAD request, and the size it reports is the number the lock text quotes.
+      for (const cab of WII_CABS) {
+        const head = await fetch(cab.disc, { method: "HEAD" }).catch(() => null);
+        ENGINE.discs[cab.id] = head?.ok ? Number(head.headers.get("content-length")) || 0 : 0;
+      }
     }
     ENGINE.ready = ENGINE.reason === null;
   }
@@ -1709,16 +1807,20 @@ const engineNeeds = () => {
 // The header rail truncates whatever it prints, so it names only the first condition the browser is
 // missing; the tile chips have room on the plinth to state all three. The full list stays on hover.
 const engineNeedsFirst = () => engineNeeds().split(" + ")[0] || "CONDITIONS UNMET";
-if (ENGINE.ready) LIB.push(WII_CAB);
-else {
+// Why a console cabinet is dark: the engine, the browser's conditions, or this cabinet's own disc.
+// The disc sentence quotes the size the HEAD request measured, so it never guesses at a filesize.
+const cabLockReason = (g) => ENGINE.reason !== null ? ENGINE.reason
+  : `碟片没有随本站发布：${(g.disc ?? "disc").split("/").pop()} 是 ${sizeHuman(ENGINE.discs[g.id] || 0)} 的 Wii 光盘镜像，远大于本站的体积预算（要上线得换成更小的碟形式）`;
+for (const cab of WII_CABS) {
+  if (ENGINE.ready && ENGINE.discs[cab.id]) { LIB.push(cab); continue; }
   // The chip names which check failed — engine files, browser conditions, or the disc — because
   // "not included" would be a lie for a machine whose emulator is already on the page.
   const chip = !ENGINE.bridge ? "ENGINE NOT SHIPPED"
-    : ENGINE.reason.includes("碟片") ? "ENGINE READY · NO DISC"
+    : ENGINE.reason === null ? "ENGINE READY · NO DISC"
     : `ENGINE OFFLINE · ${engineNeeds() || "conditions unmet"}`;
-  LOCKED.push({ id: WII_CAB.id, title: WII_CAB.title, year: WII_CAB.year, maker: WII_CAB.maker,
+  LOCKED.push({ id: cab.id, title: cab.title, year: cab.year, maker: cab.maker,
     chip,
-    why: `${ENGINE.reason}。引擎本身在这台机器上跑通了两轮实测（核心 60–73 帧/s、呈现 57–71 帧/s、游戏速度 100–104%、音频有信号），差的只是上面那一条。` });
+    why: `${cabLockReason(cab)}。引擎本身在这台机器上跑通了两轮实测（核心 60–73 帧/s、呈现 57–71 帧/s、游戏速度 100–104%、音频有信号），差的只是上面那一条。` });
 }
 
 // ---- tiles ----
@@ -1811,8 +1913,8 @@ for (const g of LIB) {
   for (const r of g.roms) if (!(await probe(r))) state.missing.add(`${g.id}/${r}`);
 }
 // Whether a cabinet can be switched on. A MAME cabinet needs its ROMs and the MAME core; the
-// console cabinet needs the second engine, which the availability probe above already measured.
-const cabReady = (g) => g.engine === "dolphin" ? (ENGINE.ready && !!ENGINE.bridge)
+// console cabinet needs the second engine plus its own disc, both measured by the probe above.
+const cabReady = (g) => g.engine === "dolphin" ? (ENGINE.ready && !!ENGINE.bridge && !!ENGINE.discs[g.id])
   : g.roms.every((r) => !state.missing.has(`${g.id}/${r}`));
 // Header lamps: green only when the core is built and every ROM the library needs is on disk.
 $("coreLamp").className = status?.coreReady ? "lamp" : "lamp bad";
@@ -1864,11 +1966,15 @@ function select(i) {
     // engine, not ROMs. Reading the SELECTED game here would put that badge on every tile.
     const gTile = LIB[j];
     if (gTile?.engine === "dolphin") {
-      chip.className = `chip ${ENGINE.ready ? "ok" : "no"}`;
-      chip.textContent = ENGINE.ready ? `DISC READY · ${(gTile.disc ?? "").split("/").pop()}`
+      // Per cabinet, not per engine: the engine being alive says nothing about whether THIS disc is
+      // served, which is the second thing a console tile has to report.
+      const ok = ENGINE.ready && !!ENGINE.discs[gTile.id];
+      chip.className = `chip ${ok ? "ok" : "no"}`;
+      chip.textContent = ok ? `DISC READY · ${(gTile.disc ?? "").split("/").pop()}`
+        : ENGINE.reason === null ? `NO DISC · ${(gTile.disc ?? "").split("/").pop()}`
         : `ENGINE OFFLINE · ${engineNeeds() || "conditions unmet"}`;
       const lamp = t.querySelector("[data-lamp]");
-      if (lamp) lamp.className = `lamp ${ENGINE.ready ? "ok" : "no"}`;
+      if (lamp) lamp.className = `lamp ${ok ? "ok" : "no"}`;
       return;
     }
     const miss = gTile.roms.filter((r) => state.missing.has(`${gTile.id}/${r}`));
@@ -1885,7 +1991,7 @@ function select(i) {
     ? `${g.maker} · 引擎 Dolphin WASM（PowerPC→WASM JIT + 软件光栅化，经 WebGPU 呈现）`
     : `${g.maker} · driver ${g.id}`;
   $("dRoms").innerHTML = dolphin
-    ? `<span class="chip ${ENGINE.ready ? "ok" : "no"}">${(g.disc ?? "disc").split("/").pop()}</span>`
+    ? `<span class="chip ${ENGINE.ready && ENGINE.discs[g.id] ? "ok" : "no"}">${(g.disc ?? "disc").split("/").pop()}</span>`
     : g.roms.map((r) =>
       `<span class="chip ${state.missing.has(`${g.id}/${r}`) ? "no" : "ok"}">${r}</span>`).join(" ");
   $("dKeys").innerHTML = g.keys.map(([k, key]) => `<kbd>${key}</kbd> ${k}`).join(" ");
@@ -1894,7 +2000,7 @@ function select(i) {
   btn.disabled = !cabReady(g);
   const missing = g.roms.filter((r) => state.missing.has(`${g.id}/${r}`));
   $("hint").textContent = btn.disabled
-    ? dolphin ? `这台现在上不了电：${ENGINE.reason}`
+    ? dolphin ? `这台现在上不了电：${cabLockReason(g)}`
       : `缺 ${missing.join(" / ")} —— 放到 ${status?.rompath ?? "roms/"}`
     : dolphin ? "插碟开玩 · Enter / 空格 开玩 · 柜牌看说明（这台不吃硬币）"
       : "点机柜直接开玩 · Enter / 空格 开玩 · 柜牌看说明";
@@ -2010,8 +2116,15 @@ function dolphinGun(g) {
 
 function applyDolphinConfig(g) {
   const q = new URLSearchParams(location.search);
+  // A lightgun console needs the core that builds the Wii Remote's IR channel; the shipped default
+  // core has no such port, so a gun cabinet asks for the candidate core by id. A visitor's own
+  // ?coreid still wins — this only fills in what nobody asked for.
+  if (dolphinGun(g) && !q.has("coreid")) q.set("coreid", IR_CORE);
   for (const [k, v] of new URLSearchParams(ENGINE.bridge.DOL_CONFIG)) if (!q.has(k)) q.set(k, v);
   if (dolphinGun(g)) q.set("wiimote", "1");
+  // Two-player Namco discs open with a Player1/Player2 ID screen that stays stuck on one remote, so
+  // the deck mirrors its aim into the second remote as well. A visitor's own ?aim2 still wins.
+  if (dolphinGun(g) && !q.has("aim2")) q.set("aim2", "1");
   history.replaceState(null, "", `?${q.toString()}`);
 }
 

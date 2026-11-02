@@ -153,6 +153,10 @@ let wgpuDiagnosticQuiet = false;
 let wgpuDiagnosticLogFilter = installWgpuDiagnosticLogFilter({ enabled: false });
 let mounted = false;
 let inputMask = 0;
+// The pointer snapshot the host last handed the core, kept here so the stats
+// reply can report what is being aimed even if the core reports nothing.
+let wiimoteInputEnabled = false;
+let wiimotePointer = { index: 0, buttons: 0, points: [], generation: 0 };
 let workerOwnsCanvas = false;
 let renderCanvas = null;
 // Desired backbuffer size for the hardware (command-ring) path, learned from
@@ -926,6 +930,7 @@ async function handleMessage(type, payload) {
         fastSoftwareRaster: payload.fastSoftwareRaster,
         softwareTevHotCaseMode: payload.softwareTevHotCaseMode,
         xfbFastPaths: payload.xfbFastPaths,
+        wiimoteInput: payload.wiimoteInput,
         correctTimeDrift: payload.correctTimeDrift,
         coreLog: payload.coreLog,
         efbDiag: payload.efbDiag,
@@ -992,6 +997,24 @@ async function handleMessage(type, payload) {
         inputGeneration: payload.inputGeneration
       }, payload.inputSentAtEpochMs, "post");
       return {};
+    case "setWiimoteIR": {
+      wiimotePointer = {
+        index: payload.index >>> 0,
+        buttons: payload.buttons >>> 0,
+        points: Array.isArray(payload.points) ? payload.points.slice(0, 2) : [],
+        generation: payload.generation >>> 0
+      };
+      api?.setWiimoteIR?.(wiimotePointer);
+      return {};
+    }
+    case "wiimoteStats":
+      return {
+        requested: wiimoteInputEnabled,
+        exported: typeof api?.setWiimoteIR === "function",
+        updates: api?.wiimoteUpdateCount?.() ?? 0,
+        buildCalls: api?.wiimoteBuildCalls?.() ?? 0,
+        pointer: wiimotePointer
+      };
     case "runFrame":
       if (!presentationLoopActive) {
         api?.pumpHostJobs?.();
@@ -1448,6 +1471,7 @@ async function loadCore({
   fastSoftwareRaster = 0,
   softwareTevHotCaseMode: requestedSoftwareTevHotCaseMode = 0,
   xfbFastPaths = 0,
+  wiimoteInput = false,
   correctTimeDrift = false,
   coreLog = false,
   efbDiag = false,
@@ -1497,6 +1521,9 @@ async function loadCore({
   if (moduleInstance) {
     return moduleInstance;
   }
+  // Recorded before any aim write so the measured stats can say honestly whether
+  // this cabinet asked for the browser Wii Remote.
+  wiimoteInputEnabled = Boolean(wiimoteInput);
   rendererDiagnostics = createRendererDiagnostics();
   wgpuDiagnosticQuiet = Boolean(requestedWgpuDiagnosticQuiet);
   wgpuDiagnosticLogFilter.restore();
@@ -1908,6 +1935,9 @@ async function loadCore({
     dolphinOglTestClear: Boolean(oglTestClear),
     dolphinFastSoftwareRaster: Math.min(3, Math.max(0, Number(fastSoftwareRaster) || 0)),
     dolphinXfbFastPaths: (Number(xfbFastPaths) || 0) & 3,
+    // dolphin_web_core.cpp turns SetWiimoteIR into a real WiimoteEmu device
+    // only when this is true; the GameCube path stays untouched.
+    dolphinWiimoteInput: Boolean(wiimoteInput),
     // Read by dolphin_web_core.cpp at CoreInit. Both are opt-in and default
     // false, so the shipping page load is unchanged.
     dolphinCorrectTimeDrift: Boolean(correctTimeDrift),
@@ -2306,6 +2336,52 @@ function bindApi(module) {
     setXfbFastPaths:
       typeof module._SetXfbFastPaths === "function"
         ? (flags) => ccall("SetXfbFastPaths", "number", ["number"], [flags | 0])
+        : null,
+    // The core hook takes one Wii Remote channel plus its two IR camera objects;
+    // a size of 0 means that object is not visible, which is how a real remote
+    // reports while the trigger is released.
+    setWiimoteIR:
+      typeof module._SetWiimoteIR === "function"
+        ? ({ index, buttons, points, generation }) => {
+            const first = points?.[0] ?? {};
+            const second = points?.[1] ?? {};
+            return (
+              ccall(
+                "SetWiimoteIR",
+                "number",
+                [
+                  "number",
+                  "number",
+                  "number",
+                  "number",
+                  "number",
+                  "number",
+                  "number",
+                  "number",
+                  "number"
+                ],
+                [
+                  index >>> 0,
+                  buttons >>> 0,
+                  first.x >>> 0,
+                  first.y >>> 0,
+                  first.size >>> 0,
+                  second.x >>> 0,
+                  second.y >>> 0,
+                  second.size >>> 0,
+                  generation >>> 0
+                ]
+              ) >>> 0
+            );
+          }
+        : null,
+    wiimoteUpdateCount:
+      typeof module._DolphinWeb_WiimoteUpdateCount === "function"
+        ? () => ccall("DolphinWeb_WiimoteUpdateCount", "number", [], []) >>> 0
+        : null,
+    wiimoteBuildCalls:
+      typeof module._DolphinWeb_WiimoteBuildCalls === "function"
+        ? () => ccall("DolphinWeb_WiimoteBuildCalls", "number", [], []) >>> 0
         : null,
     setSoftwareRasterProfileEnabled:
       typeof module._SetSoftwareRasterProfileEnabled === "function"

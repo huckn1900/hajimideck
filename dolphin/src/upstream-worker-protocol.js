@@ -15,7 +15,8 @@ export const SOFTWARE_TEV_HOT_CASE_MODE = Object.freeze({
 export const ONE_WAY_WORKER_REQUEST_TYPES = Object.freeze([
   "setAudioMuted",
   "setInputMask",
-  "setInputState"
+  "setInputState",
+  "setWiimoteIR"
 ]);
 
 const ONE_WAY_WORKER_REQUEST_TYPE_SET = new Set(ONE_WAY_WORKER_REQUEST_TYPES);
@@ -46,6 +47,14 @@ export function requestedSoftwareTevHotCaseMode(search = globalThis.location?.se
   if (params.get("swtevfast") === "1") mode |= SOFTWARE_TEV_HOT_CASE_MODE.execute;
   if (params.get("swtevshadow") === "1") mode |= SOFTWARE_TEV_HOT_CASE_MODE.shadow;
   return mode;
+}
+
+// The core only builds a Wii Remote when the host asks for it, so a GameCube
+// cabinet never pays for a device nobody aims with. ?wiimote=0 turns the
+// pointer off again for A/B runs against the same core package.
+export function requestedWiimoteInput(search = globalThis.location?.search ?? "") {
+  const requested = new URLSearchParams(search).get("wiimote");
+  return requested === null ? false : requested !== "0";
 }
 
 export function isOneWayWorkerRequestType(type) {
