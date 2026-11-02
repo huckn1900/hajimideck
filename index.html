@@ -63,9 +63,12 @@
      chips' monospace face and the launch button's pixel face. */
   #detail .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
   #detail dl { margin: 0; }
-  /* Marquee strip, spanning the panel like a cabinet's light box. */
-  .banner { grid-column: 1 / -1; overflow: hidden; aspect-ratio: 4 / 1; }
-  .banner img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+  /* Marquee strip, spanning the panel like a cabinet's light box. The plate is a fixed shape and the
+     scans are not: Time Crisis I is 2.32:1, Crisis Zone 3.08, TC II 4.48 (measured with
+     probe-banner-aspects.mjs). cover cropped the 「NAMCO」 off the TC I scan, so the art is fitted
+     whole and the plate's dark backing carries the leftover — nothing on a marquee may be cut off. */
+  .banner { grid-column: 1 / -1; overflow: hidden; aspect-ratio: 4 / 1; background: #05060a; }
+  .banner img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
   kbd { font: 11px ui-monospace, monospace; }
   /* Coin button: face and pointer only — colour and depth come from the neon block. */
   .launch { font: 13px var(--pixel); letter-spacing: .08em; cursor: pointer; }
@@ -91,7 +94,11 @@
     box-shadow: 0 24px 60px -20px #000, inset 0 1px 0 #4a5160; }
   .cab .marquee { aspect-ratio: 4 / 1; border: 2px solid #0a0c11; border-radius: 8px; overflow: hidden;
     background: #05060a; box-shadow: 0 0 26px -6px var(--accent), inset 0 0 0 1px #2a2d36; }
-  .cab .marquee img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  /* The light box is fitted, not cropped: scans come in their own shapes (TC I 2.32:1, Crisis Zone
+     3.08, TC II 4.48), so cover would cut the artwork — the 「NAMCO」 on the Time Crisis marquee
+     lost its first letter here. contain keeps the whole scan and lets the plate's dark backing fill
+     the rest, which is what a light box with narrower artwork actually looks like. */
+  .cab .marquee img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
   .bezel { padding: 12px; border: 2px solid #0a0c11; border-radius: 12px; background: linear-gradient(#1a1d24, #0b0d12);
     box-shadow: inset 0 0 0 1px #3d4350; }
   .screen { position: relative; border-radius: 8px; overflow: hidden; background: #000;
@@ -566,7 +573,7 @@
      keep the plain name plate below; every cabinet still carries its name in the tile's aria-label and
      in the service panel. */
   .tile .tmq.art-only { padding: 0 }
-  .tile .tmq.art-only .tmqart { object-position: center 50%; filter: none; opacity: 1 }
+  .tile .tmq.art-only .tmqart { object-position: center 50%; object-fit: contain; filter: none; opacity: 1 }
   .tile:hover .tmq.art-only .tmqart, .tile.sel .tmq.art-only .tmqart { filter: brightness(1.06); opacity: 1 }
   /* Pixel face is the signage face, and every cabinet name is Latin, so this never falls back
      mid-string. Ellipsis rather than overflow: the plate is the hard boundary. The name and the
@@ -2633,7 +2640,12 @@ function gunPress(code, on) {
   on ? gunHold.add(code) : gunHold.delete(code);
   send(code, on);
 }
-const dropGun = () => { gunPress(GUN.trigger, false); gunPress(GUN.pedal, false); };
+// A foot pedal is a momentary switch, and a WEB page has no pedal. Holding AltLeft in gunHold made
+// the first right-click work and every later one silent: the release path never ran, so the repeat
+// press was deduped here and MAME never saw a new press (measured: gunDown stayed ["AltLeft"] after
+// mouseup, and the reload picture never changed). Tap the pedal instead — a press is a press.
+const pedalTap = () => { gunHold.delete(GUN.pedal); pulse(GUN.pedal, 160); };
+const dropGun = () => { gunPress(GUN.trigger, false); gunHold.delete(GUN.pedal); };
 const pulse = (code, ms) => { send(code, true); setTimeout(() => send(code, false), ms); };
 // Counting the coin the deck inserts is what makes the LED readout on the coin door mean something;
 // the emulator's own credit register is not readable from here, so the label says LOCAL CREDITS.
@@ -2643,15 +2655,19 @@ const gunCanvas = $("canvas");
 gunCanvas.addEventListener("contextmenu", (e) => {
   if (!state.gun || !state.machine) return;
   e.preventDefault(); // no browser menu over the screen
-  gunPress(GUN.pedal, true);
+  pedalTap();
 });
 gunCanvas.addEventListener("mousedown", (e) => {
   if (!state.gun || !state.machine) return;
   e.preventDefault();
   if (e.button === 0) gunPress(GUN.trigger, true);
-  else if (e.button === 2) gunPress(GUN.pedal, true);
+  else if (e.button === 2) pedalTap();
 });
 addEventListener("mouseup", dropGun);
+// pointerup / pointercancel cover a release that lands outside the canvas or mid-touch: without
+// them the trigger can stay held and the next shot gets deduped the same way the pedal did.
+addEventListener("pointerup", dropGun);
+addEventListener("pointercancel", dropGun);
 addEventListener("blur", dropGun);
 // Wheel = weapon switch. These drivers have no weapon port (BUTTON5 is IPT_UNUSED in the JVS
 // table), so the pulse is inert — what matters is that the wheel never scrolls the cabinet page.
@@ -2741,6 +2757,7 @@ function touchRelease(e) {
   if (!b) return;
   b.classList.remove("on");
   if (!b.dataset.code) return;
+  if (b.dataset.code === GUN.pedal) return;        // a pedal tap releases itself; nothing to hold
   b.dataset.hold === "gun" ? gunPress(b.dataset.code, false) : press(b.dataset.code, false);
 }
 $("touchpad").addEventListener("pointerdown", (e) => {
