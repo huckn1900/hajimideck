@@ -560,19 +560,14 @@
     object-position: center 14%; filter: grayscale(.35) brightness(.72); opacity: .55;
     transition: filter .8s ease, opacity .8s ease }
   .tile:hover .tmq .tmqart, .tile.sel .tmq .tmqart { filter: grayscale(.05) brightness(1.04); opacity: .95 }
-  /* Where a cabinet has a real marquee scan, the light box is laid out the way a real one is: the
-     artwork fills the upper band and the name gets its own dark plate beneath it. Setting the title
-     over a photo that already carries the title is what made the plate unreadable. minmax(0,1fr) is
-     deliberate — left as 1fr, the image's min-content height pushes the art band past the hood. */
-  .tile .tmq.with-art { display: grid; grid-template-columns: 1fr auto; grid-template-rows: minmax(0, 1fr) auto;
-    grid-template-areas: "art art" "name num"; padding: 0; align-items: stretch }
-  .tile .tmq.with-art .tmqart { grid-area: art; position: relative; min-height: 0; height: 100%;
-    object-position: center 50%; filter: none; opacity: 1 }
-  .tile .tmq.with-art h2 { grid-area: name; padding: 2px 1.8% 3px; background: #06101b;
-    border-top: 1px solid rgba(60,224,255,.28) }
-  .tile .tmq.with-art .no { grid-area: num; margin-left: 0; padding: 2px 1.8% 3px; background: #06101b;
-    border-top: 1px solid rgba(60,224,255,.28) }
-  .tile:hover .tmq.with-art .tmqart, .tile.sel .tmq.with-art .tmqart { filter: brightness(1.06) }
+  /* Where a cabinet has a real marquee scan, the light box IS that scan: the artwork fills the whole
+     plate edge to edge, with no name text and no cabinet number over it. A marquee photo already
+     carries its own title, so plate text on top of it only cut the artwork off. Cabinets with no scan
+     keep the plain name plate below; every cabinet still carries its name in the tile's aria-label and
+     in the service panel. */
+  .tile .tmq.art-only { padding: 0 }
+  .tile .tmq.art-only .tmqart { object-position: center 50%; filter: none; opacity: 1 }
+  .tile:hover .tmq.art-only .tmqart, .tile.sel .tmq.art-only .tmqart { filter: brightness(1.06); opacity: 1 }
   /* Pixel face is the signage face, and every cabinet name is Latin, so this never falls back
      mid-string. Ellipsis rather than overflow: the plate is the hard boundary. The name and the
      cabinet number are positioned so they paint above the scan in the plain plate layout, and above
@@ -1834,15 +1829,13 @@ for (const [i, g] of LIB.entries()) {
   const art = g.posterImg
     ? `${g.poster}<img src="${g.posterImg}" alt="${g.title} 海报" loading="lazy" onerror="this.remove()">`
     : g.poster;
-  // The tile's signboard: the real marquee scan where we have one, behind the name plate.
-  const marquee = g.bannerImg
-    ? `<img class="tmqart" src="${g.bannerImg}" alt="" loading="lazy" onerror="this.remove()">`
-    : "";
-  // The tile's marquee is the machine's name plate: the real marquee scan where we have one, with the
-  // game's name lit over it, exactly as a cabinet's own light box reads. Maker and year belong on the
-  // plinth, where a cabinet actually carries them.
+  // The tile's marquee: where we have a real marquee scan, that scan fills the light box by itself.
+  // Only cabinets without a scan get the name plate, since there would otherwise be nothing on it.
+  const plate = g.bannerImg
+    ? `<img class="tmqart" src="${g.bannerImg}" alt="${g.title} 灯箱" loading="lazy" onerror="this.remove()">`
+    : `<h2>${g.title}</h2><span class="no">#${String(i + 1).padStart(2, "0")}</span>`;
   tile.innerHTML = `${cabSVG(CAB_KIND[g.id] || "lock")}
-    <div class="tmq${g.bannerImg ? " with-art" : ""}">${marquee}<h2>${g.title}</h2><span class="no">#${String(i + 1).padStart(2, "0")}</span></div>
+    <div class="tmq${g.bannerImg ? " art-only" : ""}">${plate}</div>
     <div class="art">${art}</div>
     <div class="coin-door"><span class="slot"></span><span class="doorlabel">${g.engine === "dolphin" ? "DISC" : "COIN"}</span><i class="lamp" data-lamp></i></div>
     <div class="meta"><p>${g.maker} · ${g.year}</p>
