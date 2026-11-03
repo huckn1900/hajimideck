@@ -33,9 +33,12 @@ usable there. They come through [wasm-dolphin](https://github.com/dougchansan/wa
 Dolphin cross-compiled with Emscripten, its own PowerPC-to-WASM JIT, software rasterisation presented
 through WebGPU. That engine is shipped in this site as the second engine, and it needs two browser
 capabilities the page cannot force: WebGPU and SharedArrayBuffer, which require cross-origin isolation.
-GitHub Pages cannot set response headers, so on Pages the console cabinet is locked; a server that can
-send `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`
-(`bun serve.ts` does) unlocks it. Its disc is not shipped here either — RMCE01 is a 2.59 GB image,
+GitHub Pages cannot set response headers, so on Pages the console cabinets are locked. Two header-free
+stand-ins were measured here and neither worked: a same-origin service worker that rewrites the document
+response with both headers — Chrome served it `fromServiceWorker: true` with both headers present and
+still reported `crossOriginIsolated === false` — and a `<meta http-equiv>` pair, which left the page
+unisolated. A host that can send the headers (`bun serve.ts` does; Cloudflare or Netlify's `_headers`
+can) unlocks it. Its disc is not shipped here either — RMCE01 is a 2.59 GB image,
 far over the site's budget — so an unlocked cabinet asks the player for a disc file. Measured on this
 browser, only a real file from the player's disk mounts: a File built from fetched chunks is rejected
 by the engine's worker, a file parked in OPFS exceeds Chrome's quota, and the engine reads the disc
@@ -58,10 +61,6 @@ Everything is static files, so this works on GitHub Pages with no server:
     dolphin/src/         that engine's host code; the audio worklet processor is loaded through
                          import.meta.url, so the directory ships with it
     dolphin/LICENSE      the engine's licence, kept in the site for attribution
-    sw.js                a same-origin service worker that adds Cross-Origin-Opener-Policy and
-                         Cross-Origin-Embedding-Policy to the document response. The engine needs
-                         SharedArrayBuffer, which the browser only gives a cross-origin isolated
-                         page, and Pages cannot set response headers. Only navigations are touched.
 
 Asset paths are page-relative so the whole thing works under a project-page path.
 `status.json` is a static stand-in for the dev server's `/status.json`; the page only reads
@@ -88,9 +87,11 @@ This folder is the whole site — push it and turn Pages on, no build step there
 Pages caps a published site at 1 GB and warns around 100 GB/month of bandwidth; Git LFS does not
 work with Pages, so the binaries are committed as plain files. `.nojekyll` is included so Pages
 serves the files as-is instead of running a Jekyll build over them. Pages also cannot set response
-headers, and a `<meta http-equiv>` does not stand in for them — so the capabilities the second
-engine needs (cross-origin isolation, which SharedArrayBuffer and WebGPU require) cannot be granted
-there. Hosting that can send headers (Netlify's `_headers`, Cloudflare's `_headers`) unlocks it.
+headers, and neither stand-in for them works: a `<meta http-equiv>` pair leaves the page unisolated, and
+a service worker that rewrites the document with both headers is served `fromServiceWorker: true` while
+Chrome still reports `crossOriginIsolated === false` — isolation is decided from the network response.
+So the capabilities the second engine needs (cross-origin isolation, which SharedArrayBuffer requires)
+cannot be granted there. Hosting that can send headers (Netlify's `_headers`, Cloudflare's `_headers`) unlocks it.
 
 ## Credits and licence
 
