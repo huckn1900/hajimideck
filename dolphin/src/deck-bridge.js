@@ -49,6 +49,10 @@ const DECK_KEYS = {
   ArrowLeft: "D_LEFT", ArrowRight: "D_RIGHT", ArrowUp: "D_UP", ArrowDown: "D_DOWN",
   KeyA: "STICK_LEFT", KeyD: "STICK_RIGHT", KeyW: "STICK_UP", KeyS: "STICK_DOWN",
   KeyQ: "L", KeyE: "R", KeyU: "C_STICK_UP", KeyJ: "C_STICK_DOWN", KeyH: "C_STICK_LEFT", KeyK: "C_STICK_RIGHT",
+  // The Wii Remote's ⊕ and ⊖ keys. Measured on Arcade Hits: its ID-select and ranking-name screens
+  // say 「Point and press ◎ or ⊕ to confirm」 — A and Start do nothing there; the confirm is the
+  // Plus button, so a cabinet whose menus ask for aim has to be able to press it.
+  KeyP: "PLUS", KeyM: "MINUS",
 };
 
 /**
@@ -181,6 +185,7 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
     START: WIIMOTE_BUTTON_BITS.one, SELECT: WIIMOTE_BUTTON_BITS.two,
     D_LEFT: WIIMOTE_BUTTON_BITS.left, D_RIGHT: WIIMOTE_BUTTON_BITS.right,
     D_UP: WIIMOTE_BUTTON_BITS.up, D_DOWN: WIIMOTE_BUTTON_BITS.down,
+    PLUS: WIIMOTE_BUTTON_BITS.plus, MINUS: WIIMOTE_BUTTON_BITS.minus,
   };
   const irButtonBits = () => {
     let bits = aiming.firing ? IR_TRIGGER_BIT : 0;

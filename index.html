@@ -103,7 +103,10 @@
     box-shadow: inset 0 0 0 1px #3d4350; }
   .screen { position: relative; border-radius: 8px; overflow: hidden; background: #000;
     box-shadow: 0 0 40px -8px var(--accent); }
-  #canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; background: #000; image-rendering: pixelated; }
+  /* touch-action:none stops page scroll/zoom over the screen WITHOUT preventDefault(): measured
+     on this build the engines drop synthetic (untrusted) mouse/keyboard events, so the touch path
+     must let the browser deliver its own trusted compatibility mouse events to the canvas. */
+  #canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; background: #000; image-rendering: pixelated; touch-action: none; }
   /* CRT glass: scanlines + edge darkening over the drawn game. */
   .screen::after { content: ""; position: absolute; inset: 0; pointer-events: none;
     background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 2px, transparent 2px 4px),
@@ -2408,6 +2411,25 @@ async function launch(g) {
   audio.shortMin = audio.level = -1;
   diag.frames = [];
   const skip = state.skip;
+  // The CRT flicker: with preserveDrawingBuffer:false the browser clears the WebGL drawing buffer
+  // after every composite, and a MAME frame lands roughly every 33ms while the display composites
+  // at 60Hz — so about half of the presented frames are the cleared (black) buffer. That is the
+  // black↔picture flicker measured on Crisis Zone: renders are fine, the composites between them
+  // are empty. Attributes are locked at the FIRST getContext call on a canvas, so asking Emscripten
+  // nicely does nothing; the deck pre-attaches the context itself, with the same attributes the
+  // core asks for (measured via getContextAttributes on a live cabinet: alpha:true, antialias:false,
+  // premultipliedAlpha:false, depth/stencil:true) and preserveDrawingBuffer:true, so a composite
+  // between renders shows the last drawn frame instead of black. Every MAME core requests "webgl2"
+  // (grep of cores/*/​*.js), and a page load boots exactly one engine — the console path takes this
+  // canvas to WebGPU instead, so the pre-attach is scoped to the MAME path.
+  if (!dolphin) {
+    try {
+      $("canvas").getContext("webgl2", {
+        alpha: true, antialias: false, depth: true, stencil: true,
+        premultipliedAlpha: false, preserveDrawingBuffer: true,
+      });
+    } catch (e) { log.textContent += `preserve buffer 失败（${e.message}），按默认呈现。\n`; }
+  }
   try {
     if (dolphin) {
       // The second engine gets no MAME boot call: the disc is mounted into the core's own file
@@ -2984,11 +3006,15 @@ gunCanvas.addEventListener("wheel", (e) => {
 }, { passive: false });
 
 // ---- touch ----
-// A phone has no mouse. Emscripten's SDL maps touch to SDL_FINGER events, and MAME's lightgun /
-// adstick devices only consume SDL_MOUSE_MOTION (input_sdl3.cpp), so a finger drag is translated
-// into a synthetic mousemove on the canvas — the same event the mouse path produces. The on-screen
-// pad sends the same synthetic keys as the gamepad shim, so the cabinet cannot tell them apart.
-// (TOUCH / PHONE_FULL are defined up in the parameter block — the auto-boot needs them early.)
+// Measured on this build (shots-cz-synthmouse): the engines DROP synthetic (untrusted) mouse and
+// keyboard events — a JS-dispatched click never reaches MAME. So the touch path must rely on the
+// browser's own TRUSTED compatibility mouse events: with touch-action:none on the canvas and no
+// preventDefault() here, Android Chrome delivers trusted mousemove/mousedown to the canvas, which
+// is what aims the lightgun and pulls the trigger (Android taps shoot; iOS Safari sends no
+// compatibility mouse events, so iOS touch firing stays engine-side unsupported).
+// The synthetic events below are kept for the console engines' aim bridge, which reads the deck's
+// own aim state rather than DOM events; MAME ignores them. (TOUCH / PHONE_FULL are defined up in
+// the parameter block — the auto-boot needs them early.)
 $("padExit").addEventListener("click", () => exitToLibrary());
 // aimAt maps screen coordinates into the gun's coordinate space. Under phonefull the visible
 // window is an object-fit: cover crop of the picture, so a point on the screen must be converted
@@ -3012,17 +3038,18 @@ const aimAt = (x, y) => {
 const touchPoint = (e) => (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
 gunCanvas.addEventListener("touchstart", (e) => {
   if (!state.gun || !state.machine) return;
-  e.preventDefault(); // no page scroll while aiming at the screen
+  // no preventDefault(): swallowing touch also swallows the browser's trusted compatibility
+  // mouse events, and only trusted input reaches the engines (measured). Scroll is already
+  // blocked by touch-action:none on the canvas.
   const t = touchPoint(e);
   if (t) aimAt(t.clientX, t.clientY);
-  gunPress(GUN.trigger, true); // a tap is a shot
-}, { passive: false });
+  gunPress(GUN.trigger, true); // deck-side tally; on Android the real tap also fires the gun
+}, { passive: true });
 gunCanvas.addEventListener("touchmove", (e) => {
   if (!state.gun || !state.machine) return;
-  e.preventDefault();
   const t = touchPoint(e);
   if (t) aimAt(t.clientX, t.clientY);
-}, { passive: false });
+}, { passive: true });
 addEventListener("touchend", dropGun);
 addEventListener("touchcancel", dropGun);
 
