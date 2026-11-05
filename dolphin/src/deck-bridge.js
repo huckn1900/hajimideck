@@ -116,6 +116,18 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
     if (gun) sendPointer();
   };
   const onKeyDown = (e) => {
+    // On a lightgun cabinet the deck's trigger key must reach the remote. A real pointerdown on the
+    // canvas arrives through gunDown, but the deck's own paths (touch tap, gamepad A, ?deck API)
+    // press the trigger as a key — without this branch the remote never fires (measured: Gunblade NY
+    // took every aim screen dark while ControlLeft key events reached the window).
+    if (gun && e.code === "ControlLeft") {
+      if (e.isTrusted) armAudio();
+      e.preventDefault();
+      if (e.repeat) return;
+      aiming.firing = true;
+      sendPointer();
+      return;
+    }
     const b = DECK_KEYS[e.code];
     if (!b) return;
     // Only a press the player actually made counts as an activation for Chrome's autoplay policy;

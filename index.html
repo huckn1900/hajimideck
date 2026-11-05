@@ -155,6 +155,9 @@
   #stage.compact #keyside .ctl { width: 80px; height: 26px; margin: 6px 0 6px }
   #stage.compact #diag { font-size: 8px; padding: 5px 6px; max-width: min(240px, 24vw) }
   #stage.compact #hud button[data-act="diag"], #stage.compact #hud button[data-act="fps"] { display: none }
+  /* In a tight vertical band the light box is pure chrome — on phones and handhelds that height
+     belongs to the screen, not to the marquee. */
+  #stage.compact .marquee { display: none }
   /* On a touch machine the pad already carries every button the plate has, so a compact touch
      cabinet drops the plate's own 44px targets instead of making the screen a chip. */
   #stage.compact.padlive #hud { display: none }
@@ -163,6 +166,10 @@
   /* Every fixed overlay is capped against the viewport as well as in pixels: page zoom shrinks the
      CSS layout viewport, so a 400px log at 200% zoom would cover half the cabinet. Measured with
      cdp-zoom.ts at deviceScaleFactor 1 / 1.5 / 2. */
+  /* After READY the log has served its purpose — the lines stay readable if you expand it, but on a
+     phone the strip it reserves at the top is the space the screen should have. */
+  #bootlog.done { max-height: 34px; opacity: .55; overflow: hidden; }
+  #stage.compact #bootlog.done { max-height: 26px }
   #bootlog { position: fixed; left: 16px; top: 16px; max-width: min(320px, 26vw); max-height: 26vh;
     overflow: auto; padding: 10px 12px; border: 2px solid #2a2d36; border-radius: 6px;
     background: rgba(5,8,12,.88); font: 11px/1.5 ui-monospace, monospace; color: #7fe0a3; white-space: pre-wrap; }
@@ -364,6 +371,26 @@
     .touchpad .acts { grid-template-columns: repeat(2, min(34px, 16vw)); grid-template-rows: repeat(2, min(26px, 12vw)) }
     .touchpad .hintpad { display: none }
   }
+  /* ---- phone cabinet: the screen IS the whole screen ----
+     On a touch device the cabinet's screen covers the viewport exactly — no margins, no letterbox.
+     The picture keeps its 4:3 aspect through object-fit: cover: full coverage, zero distortion;
+     what gets cropped is the sides of the picture, and arcade action lives in its middle anyway.
+     The cabinet chrome (wall / marquee / plate) steps aside — the touch deck is the control plate
+     now — and the pad floats over the bottom band, where a stick cabinet's own controls would sit. */
+  #stage.phonefull { display: block; padding: 0 !important }
+  #stage.phonefull .cabinet-wall, #stage.phonefull .cab .marquee, #stage.phonefull .deckplate,
+  #stage.phonefull #keyside { display: none }
+  #stage.phonefull .cab { position: fixed; inset: 0; width: 100vw !important; height: 100vh;
+    padding: 0; border: 0; border-radius: 0; background: #000; box-shadow: none; display: block }
+  #stage.phonefull .bezel { padding: 0; border: 0; box-shadow: none; height: 100vh; background: #000 }
+  #stage.phonefull .screen { border-radius: 0; height: 100% }
+  #stage.phonefull #canvas { width: 100vw; height: 100vh; aspect-ratio: auto;
+    object-fit: cover; object-position: center }
+  /* The plate that carried 「退出」 is hidden with the chrome, so a phone keeps an exit pill in
+     the one corner that is chrome-free. */
+  #padExit { position: fixed; top: 12px; right: 12px; z-index: 71; padding: 8px 12px;
+    border: 2px solid var(--line); border-radius: 10px; background: rgba(12,14,20,.78);
+    color: var(--text); font: 9px var(--pixel); letter-spacing: .12em; pointer-events: auto }
   /* A finger, not a cursor. On a touch machine the cabinet's own buttons grow to a 44px target,
      and the library's LAUNCH cap gets a thumb-height so it isn't a 9px pixel line to hit. */
   #stage.padlive #hud button { min-width: 44px; min-height: 44px; padding: 0 10px; font-size: 9px }
@@ -949,6 +976,8 @@
   <div id="bootlog"></div>
   <div id="keyside" hidden></div>
   <div id="diag" hidden></div>
+  <!-- Phone-only exit pill: the cabinet plate is hidden when the screen goes full-bleed. -->
+  <button id="padExit" hidden>退出</button>
   <!-- Touch control deck: only shown when this device has coarse pointer input (see buildTouchPad). -->
   <div class="touchpad" id="touchpad">
     <div class="cluster dpad">
@@ -1065,10 +1094,12 @@ const LIB = [
   {
     id: "timecrs2", title: "Time Crisis II", year: "1998", maker: "Namco", gun: true,
     hw: "Namco System Super 223 · TSS-I/O MIU 设备 BIOS · 双人光枪（实体枪 + 踏板）",
+    core: "namcos22_tc2_deep",
+    args: ["-frameskip", "2"],
     roms: ["timecrs2.zip", "namco_tssio.zip"],
     posterImg: "art/timecrs2-flyer.jpg", bannerImg: "art/timecrs2-marquee.jpg",
     keys: [["瞄准", "鼠标（方向键可微调）"], ["射击", "鼠标左键"], ["躲掩体", "鼠标右键"], ["投币", "空格 或 5"], ["开始", "1"], ["2P", "2"]],
-    notes: "Super 223 走 JVS 总线：driver 把 Gun Trigger 放在 PLAYER1 bit 0x02、Foot Pedal 放在 0x8000，光枪范围是 91..824 / 38..285。namco_tssio.zip 是 TSS-I/O 枪控制板的 ROM（设备 BIOS，不是游戏 ROM），缺它 MAME 起不来。实测能玩：真实时间几分钟后走完 SDRAM 自检 → SELECT GAME MODE（鼠标射击选中）→ STAGE 1 剧情场景。代价是这块板子（双 68000 + Zoom DSP）在这个浏览器里只跑到 ~20-35% 实时速度，画面是慢动作、声音跟着机器速度一起放慢（欠载的回调按机器速度补样，空窗改静音，不再是破音）；不是画面或音频本身的问题。手机上会换成屏幕按钮（射击/踏板/投币/开始）+ 手指拖屏幕瞄准。",
+    notes: "Super 223 走 JVS 总线：driver 把 Gun Trigger 放在 PLAYER1 bit 0x02、Foot Pedal 放在 0x8000，光枪范围是 91..824 / 38..285。namco_tssio.zip 是 TSS-I/O 枪控制板的 ROM（设备 BIOS，不是游戏 ROM），缺它 MAME 起不来；本地那份 dump 的 CRC 是错的（fe5083e4，driver 要求 edad4538），换成 archive.org 上的正确 dump 后枪自检才走得完。实测能玩：真实时间几分钟后走完 SDRAM 自检 → SELECT GAME MODE（鼠标射击选中）→ 真实游戏画面（GASHIN 开场场景、TRY 2P GO，已用截图验证，画面持续变化 448 帧）。本柜用本地补丁核心 namcos22_tc2_deep（主 CPU 时钟 ÷3 + 光栅列 ÷2）加 MAME 的 -frameskip 2：实测这板子每帧的成本主要在精灵绘制——继续降时钟、把光栅步加深到 3（tc2_max）只有 43.7，画面还出暗竖条；真正的杠杆是隔帧跳过绘制。用上之后实测：模拟速度 ~98% 实时、呈现帧率 ~49 帧/s、音频按机器速度插补样本（不破音）。这是这台机器能测到的最好值：解释执行的帧步下限 ~18ms/tick，60Hz 的模拟帧在这个构建里做不到；代价是跳过一半绘制让画面略不连贯。手机上会换成屏幕按钮（射击/踏板/投币/开始）+ 手指拖屏幕瞄准。",
     poster: `<svg viewBox="0 0 300 172" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="t2" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#0a1622"/><stop offset=".5" stop-color="#142a3d"/><stop offset="1" stop-color="#050a12"/>
@@ -1089,11 +1120,11 @@ const LIB = [
   {
     id: "crszone", title: "Crisis Zone", year: "2000", maker: "Namco", gun: true,
     hw: "Namco System Super 223 · R4650（MIPS III）· CSZ1 MIU 设备 BIOS · 光枪（实体枪 + 踏板）",
-    core: "namcos22_r4650_33mhz",
+    core: "namcos22_cz_fix",
     roms: ["crszone.zip", "namco_csz1.zip"],
     posterImg: "art/crszone-flyer.jpg", bannerImg: "art/crszone-marquee.jpg",
     keys: [["瞄准", "鼠标（方向键可微调）"], ["射击", "鼠标左键"], ["躲掩体", "鼠标右键"], ["投币", "空格 或 5"], ["开始", "1"], ["2P", "2"]],
-    notes: "driver 直接复用 Time Crisis II 的 JVS 端口表，只把光枪范围换成 0x040..0x33f；namco_csz1.zip 是 CSZ1 枪控制板（GUN-EXTENTION JPN Ver2.05）的 ROM。这台的主 CPU 是 IDT R4650（MIPS III，wasm 里只能靠解释器跑每一个周期），MAME 的 driver 按头注释里那句「Super System 23 Evolution 2 = 200MHz」给它记了 BUSCLOCK*6，而同一份文件里的板子笔记记的是 33.3333MHz 的时钟输入（pin 185）。解释器在 wasm 里付不起 6 倍的周期：按上游时钟实测只有 ~20 帧/秒、模拟时间只到真实时间的 34%，而且画面和音频都不是瓶颈（把整个 screen_update 跳过、-sound none、-video none 各自只让比例动几个百分点）。所以本柜用的是本地补丁核心 namcos22_r4650_33mhz：只把主 CPU 时钟改成 BUSCLOCK，帧步仍是 VBL 驱动，游戏时序不变；实测冷启动阶段 ~46 帧/秒、进入稳定画面后 ~38 帧/秒（同一窗口上游核心只有 ~20 帧/秒），模拟时间 ~62–76% 实时。起机先走 SYS23EU2 自检（屏幕会依次出 ROM / BANK / CHROM I/O 测试页，真实时间一两分钟），之后到 attract：真实渲染的 3D 多边形街景（百货商场模特陈列 + INSERT 2 COINS，已用截图验证），准星跟鼠标走（换鼠标位置画面就变）。这台在模拟时间 ~153.6 秒处会停住：设备时钟不再推进、画面不再刷新、按 P 也恢复不了，上游核心也停在同一个数值，所以那是 driver 自己的缺口（MAME 给这台标的是 imperfect），不是本补丁带来的；能验证的是帧率和画面，不是打通整局。手机上会换成屏幕按钮（射击/踏板/投币/开始）+ 手指拖屏幕瞄准。",
+    notes: "driver 直接复用 Time Crisis II 的 JVS 端口表，只把光枪范围换成 0x040..0x33f；namco_csz1.zip 是 CSZ1 枪控制板（GUN-EXTENTION JPN Ver2.05）的 ROM。这台的主 CPU 是 IDT R4650（MIPS III，wasm 里只能靠解释器跑每一个周期），MAME 的 driver 按头注释里那句「Super System 23 Evolution 2 = 200MHz」给它记了 BUSCLOCK*6，而同一份文件里的板子笔记记的是 33.3333MHz 的时钟输入（pin 185）。解释器在 wasm 里付不起 6 倍的周期：按上游时钟实测只有 ~20 帧/秒、模拟时间只到真实时间的 34%。本柜现在用本地补丁核心 namcos22_cz_fix：合并三个杠杆成一个宏——帧缓冲保留（CRSZONE_HOLD_POST，修掉之前那阵「疯狂闪频」：逐帧亮度签名全程没跳，亮帧数 0，那是每帧回调一会儿 ~29ms、一会儿 ~0ms 的交替节奏，jamma 自带的 pace60 在浏览器早到几毫秒时跳一帧再重对齐；deck 现在按浏览器自己的 rAF 节奏出帧、只加 60Hz 上限）、主 CPU 与 H8 时钟 ÷2、光栅列 ÷2。进了真实关卡之后的实测（截图验证过：走廊场景 + 准星 + TIME/CLOCK/ZONE HUD，真实关卡不是自检或选人页）：画面按 ~25ms 的稳定节奏出现（屏幕上 ~38 帧/s），模拟时间 ~69% 实时，无闪频。这台到不了 50：成本分解显示把整个 screen_update 编掉只剩 ~18ms/帧（CPU 与设备模拟的下限，60Hz 的模拟帧在这个构建里做不到），光栅再加 ~8ms，文字层再加 ~3ms——即便把光栅再加深（cz_mid，tick 18ms）呈现也只有 ~41，且那版到不了真实关卡（停在 ZONE SELECT）；Time Crisis II 那边有效的 -frameskip 在这台反而更差（绘制不在这条路径上：实测 28.3 帧/s、tick 33.5ms）。所以本柜以「真实关卡 + 稳定节奏 + 无闪频」上线，50 帧这条线在这台浏览器上是物理到不了的，这里如实标注。音频部分：机器比实时慢，每个回调只有几个百分点的样本，按当刻各自的比例插值会让音高在两帧间来回跳；现在按机器持续产样的速率恒定播放并留 ~120ms 缓冲，空窗 0 次，代价是声音跟着机器一起慢。起机先走 SYS23EU2 自检（屏幕会依次出 ROM / BANK / CHROM I/O 测试页，真实时间一两分钟），之后到 attract：真实渲染的 3D 多边形街景（百货商场模特陈列 + INSERT 2 COINS，已用截图验证），准星跟鼠标走（换鼠标位置画面就变）。这台在模拟时间 ~153.6 秒处会停住：设备时钟不再推进、画面不再刷新、按 P 也恢复不了，上游核心也停在同一个数值，所以那是 driver 自己的缺口（MAME 给这台标的是 imperfect），不是本补丁带来的；能验证的是帧率和画面，不是打通整局。手机上会换成屏幕按钮（射击/踏板/投币/开始）+ 手指拖屏幕瞄准。",
     poster: `<svg viewBox="0 0 300 172" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="cz" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#08182a"/><stop offset=".5" stop-color="#14314a"/><stop offset="1" stop-color="#050a12"/>
@@ -1122,7 +1153,7 @@ const LIB = [
     hw: "Konami Hornet (System 32 后续机型) · PPC + K037122 · 狙击光枪（双屏 + 狙击镜）",
     roms: ["sscope.zip"],
     keys: [["瞄准", "移动鼠标（准星走 AD_STICK 增量，不是屏幕坐标）"], ["射击", "鼠标左键"], ["投币", "空格 或 5"], ["开始", "1"]],
-    notes: "这块板子 MAME 标的是 NOT_WORKING：起机后只有游戏自己的自检文字（LANGUAGE MCU … ROM MISSING），主屏一直是黑的，出不了可玩画面。原因是 split ROM 包里没有 language MCU 的 EEPROM dump（MAME 里标 BAD_DUMP），mdk.cab 的 merged/full 端点是空的，补不上。原机的狙击镜副屏（768x236）走 dualhsxs 布局合成，布局文件本身加载正常。没有武器切换端口。帧率实测约 39 帧/s、能出声（偶发欠载按机器速度补样，不再破音）——这台板子的开销在 PPC 解释器上，不是绘制：帧跳过、降分辨率（512x384 / 320x240）、静音都不改变每帧 23-25 ms 的耗时，换 -O3 全量 LTO 链接的 hornet_o3 核心与现有 wasm 逐字节相同，没有收益，所以 40 帧/s 就是这个移植的物理上限。模拟速度这项测不了——hornet 核心没导出调度器时钟，诊断面板会直说「不可测」。手机上方向键 + 手指拖屏幕瞄准（这台走 AD_STICK，不是光枪）。",
+    notes: "这块板子 MAME 标的是 NOT_WORKING（0.289 的 GAMEL 表里所有 sscope 变体都是 NOT_WORKING + dualhsxs 双屏布局）：起机后只有游戏自己的自检文字（LANGUAGE MCU … ROM MISSING），主屏一直是黑的，出不了可玩画面。原因是 split ROM 包里没有 language MCU 的 EEPROM dump（MAME 里标 BAD_DUMP），mdk.cab 的 merged/full 端点是空的，补不上。帧率实测约 39 帧/s、能出声、准星跟鼠标走——但没有场景可打。可玩门槛（进画面 + ≥50 帧/s）在这台板上是物理到不了的：开销在 PPC 解释器上，每帧 23-25 ms，帧跳过、降分辨率（512x384 / 320x240）、静音、换 -O3 全量 LTO 的 hornet_o3（与现有 wasm 逐字节相同）都不改变耗时；试过把 PPC 时钟减半的 hornet_ppc_half，实测反而更差（28.2 ms/帧、屏幕近乎全黑、模拟速度不可测），实验否决。所以这台不上电，只说明原因。",
     poster: `<svg viewBox="0 0 300 172" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="sc" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#04080f"/><stop offset=".55" stop-color="#143243"/><stop offset="1" stop-color="#050a12"/>
@@ -1144,7 +1175,7 @@ const LIB = [
     hw: "Konami Hornet · PPC + K037122 · 狙击光枪（带 LAN 对战口）",
     roms: ["sscope2.zip"],
     keys: [["瞄准", "移动鼠标（准星走 AD_STICK 增量，不是屏幕坐标）"], ["射击", "鼠标左键"], ["投币", "空格 或 5"], ["开始", "1"]],
-    notes: "同一块 Hornet 硬件的二代（Dark Silhouette），多了 LAN 口（MAME 标 NODEVICE_LAN）。同样只出自检文字（language MCU ROM MISSING + ds2401/at93c46 的 dump 缺失）然后黑屏，出不了可玩画面。能起机、能投币、准星能跟鼠标走，但没有场景可打。手机上也能投币和瞄准，屏幕仍是黑的。",
+    notes: "同一块 Hornet 硬件的二代（Dark Silhouette），多了 LAN 口（MAME 标 NODEVICE_LAN），driver 状态与一代相同：NOT_WORKING。同样只出自检文字（language MCU ROM MISSING + ds2401/at93c46 的 dump 缺失）然后黑屏。能起机、能投币、准星能跟鼠标走，但没有场景可打；一代上测过的时钟减半实验（hornet_ppc_half）在这台同样只会更慢。所以这台不上电，只说明原因。",
     poster: `<svg viewBox="0 0 300 172" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="s2" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#0a1622"/><stop offset=".5" stop-color="#1b2a45"/><stop offset="1" stop-color="#050a12"/>
@@ -1231,7 +1262,7 @@ const GBLA_CAB = {
     ["菜单 / 开始", "X 或 1（A / Start）"],
     ["投币", "这台没有投币口：Wii 吃碟片，不吃硬币"],
   ],
-  notes: "实测（截图 gbla30 / gbla31 / gbla32 为证）：这张碟能起机，画面稳定、帧率与音频都在跑（coreFps 60–64，音频 48 kHz 在出帧）。鼠标瞄准走的是 Wii Remote 红外通道，实测精度在 ±1 px 内（画布 0.50 → 核心收到 x512 y477，含扳机位 1024）；用两点候选核心时核心会回报一对红外 LED 簇，中点正好落在瞄准点上（请求 573/349 → 回报 565/350 与 581/350）。流程实测：起机 → Nintendo 外设教程（「Wii Zapper Use」、「Put on and tighten the wrist strap」）→ ESRB 分级卡 → 建玩家 ID → 「Enter a name to use on the Rankings」；那张记分页上的字母格（A B C D E F 与 END）确实跟着瞄准走——瞄准 0.32 时高亮「A」，0.50 时高亮「B」，0.64 时高亮「F」/END，按键后画面往前走（帧哈希变化）。但它没有走到 L.A. Machineguns 的选人页：三次 walk（含按 Key1 三次、左右两半都瞄过）只进到了 Gunblade NY 的内容。所以这台柜的状态是：起机、瞄准与界面推进实测通过，L.A. Machineguns 那一关在这台引擎里没走到。",
+  notes: "实测（截图 reg21/reg22 系列为证）：这张碟能起机，引擎健康——coreFps 64、呈现 ~61 fps、游戏速度 106%、音频 48 kHz 连续出帧（audioState running）。红外瞄准真实到达仿真遥控器：画布 fx .282 → 核心收到 IR x281（一对相距 16 px 的点，中点等于瞄准值）；菜单页（GAME SELECT、ID SELECT）确实按瞄准做命中测试——瞄右下角（fx .645 fy .585）时右下槽高亮，删 ID（瞄准 + A）会生效。但流程走不到关卡：删 ID 后主机重启（SEGA 标 → 黑屏 → 预置 ID 又回来了）；唯一一次走到「Enter a name to use on the Rankings」名字页（reg21 的 play 帧），对六次不同瞄准 + 按住扳机的逐帧像素分析显示：黄色准星重心恒定停在画面正中（fx .499 fy .467），高亮不跟瞄准动——名字页在这台模拟红外下不接受瞄准；按 A / Start 也不写字母、不确认。所以这台柜的状态如实是：起机、引擎帧率/音频、菜单级 IR 瞄准实测通过；记分名字页的确认走不通，L.A. Machineguns / Gunblade NY 的关卡画面在这台引擎里没走到——不声称 PASS。街机原版那条路（MAME model3）在锁柜里另有实测说明。",
   poster: `<svg viewBox="0 0 300 172" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="gb" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#120a16"/><stop offset=".5" stop-color="#3a1626"/><stop offset="1" stop-color="#08060d"/>
@@ -1361,8 +1392,17 @@ function updatePlate() {
 // otherwise the ?boot= auto-launch (which runs during module evaluation) throws ReferenceError.
 const audio = { ticks: 0, padded: 0, padSamples: 0, shortMin: -1, level: -1, node: null, ctx: null, pump: 0, need: 8192,
   // Underrun accounting: padFrames = output frames the backend held on the last sample; stretched /
-  // ratioMin = how many callbacks the deck stretched instead, and the lowest stretch ratio seen.
-  padFrames: 0, gaps: 0, stretched: 0, silenced: 0, ratioMin: 1 };
+  // ratioMin = how many callbacks the deck had to interpolate instead, and the lowest ratio seen.
+  // queueMs / dropped = what the playback queue holds and what it had to discard (a machine running
+  // faster than realtime produces more than playback consumes).
+  // ratio = smoothed samples-produced / samples-needed over recent callbacks. Playback consumes at
+  // this rate, so pitch stays constant; a machine below realtime plays slow audio instead of a
+  // sequence whose speed changes every callback. null until the first callback with real samples.
+  // ratioHist = the smoothed rate at recent callbacks. Pitch stability is exactly this: a rate that
+  // moves between callbacks is what reads as warble, so a probe measures its spread, not the count
+  // of stretched callbacks.
+  padFrames: 0, gaps: 0, stretched: 0, silenced: 0, ratioMin: 1, queueMs: 0, dropped: 0, ratio: null, ratioHist: [],
+  lastCb: 0 };
 // The coin mechanism's own clunk. Reuses the emulator's AudioContext (no second context, no new
 // permission prompt) and only fires once that context is running — in a browser without audio, or
 // before the first click, coins stay silent, which is honest rather than a fake promise.
@@ -1386,6 +1426,96 @@ function coinBlip() {
 }
 // Ring entries are interleaved stereo samples, so milliseconds = entries / (2 × sample rate).
 const ringMs = (n) => Math.round((n * 1000) / ((audio.ctx?.sampleRate ?? 48000) * 2));
+
+// ---- the playback queue ----
+// A cabinet that cannot reach realtime produces fewer samples per callback than the callback needs.
+// The backend fills the shortfall by holding its last sample (a stuck DC level: crackle), and
+// stretching each callback on its own plays that callback's samples faster or slower than the next
+// one's (a per-callback pitch change: warble). Neither is what a slow cabinet actually does — it
+// makes audio at a slower continuous rate. So the samples the machine produced are queued here, and
+// each callback reads back with a position that carries across callbacks: while the queue is short
+// the position advances slower than the output (interpolated, playing at the machine's pace), and
+// when a callback produced enough it advances one sample per output frame, exactly as if nothing
+// were wrong. Nothing restarts, holds, or seams at a callback boundary; nothing is dropped unless
+// the queue runs ahead of playback, which only bounds latency.
+// The queue may run at most this far ahead of playback (~0.33s at 48 kHz). Audio arrives in bursts
+// tied to machine frames while callbacks pull it smoothly, so a small bound made callbacks find an
+// empty queue and output silence; the bound is what caps latency, not what keeps the sound continuous.
+const stream = { cap: 32768, l: new Float32Array(32768), r: new Float32Array(32768), rear: 0, fp: 0, ahead: 16000 };
+const queueCompact = () => {
+  const from = Math.floor(stream.fp);
+  stream.l.copyWithin(0, from, stream.rear);
+  stream.r.copyWithin(0, from, stream.rear);
+  stream.fp -= from;
+  stream.rear -= from;
+};
+const queueAppend = (chans, real) => {
+  if (real <= 0) return;
+  if (stream.rear + real > stream.cap) queueCompact();
+  for (let i = 0; i < real; i++) {
+    stream.l[stream.rear + i] = chans[0][i];
+    stream.r[stream.rear + i] = chans[1][i];
+  }
+  stream.rear += real;
+};
+const queueFill = (chans, frames) => {
+  if (stream.rear - stream.fp > stream.ahead) {
+    audio.dropped += Math.floor(stream.rear - stream.fp - stream.ahead);
+    stream.fp = stream.rear - stream.ahead;
+  }
+  // Keep the buffer in a band rather than letting playback drift away from production: a queue that
+  // empties makes the next callback silent, a queue that overflows gets discarded. Nudging toward the
+  // band is what makes the sound continuous, and the steps are deliberately small so the pitch cannot
+  // jump between callbacks.
+  const bufferedMs = Math.round(((stream.rear - stream.fp) * 1000) / (audio.ctx?.sampleRate ?? 48000));
+  if (audio.ratio !== null) {
+    if (bufferedMs > 200) audio.ratio = Math.min(1, audio.ratio + 0.02);
+    else if (bufferedMs < 40) audio.ratio = Math.max(0.02, audio.ratio - 0.02);
+    audio.ratioHist.push({ t: performance.now(), r: audio.ratio });
+    if (audio.ratioHist.length > 400) audio.ratioHist.splice(0, 200);
+  }
+  // Playback rate comes from the machine's sustained production rate (see the rate estimate in the
+  // callback wrapper), not from this callback's momentary shortfall. Reading the span per callback
+  // meant every callback interpolated at its own ratio, so the pitch changed 0.02→1 between
+  // consecutive callbacks — that is the crackle the user hears as 爆音. A steady rate keeps pitch
+  // constant and only slows the audio to match the machine.
+  // A standing reserve is what makes the sound continuous: playback may never read further than the
+  // reserve, so the queue always holds ~120ms of audio and a callback cannot find an empty queue.
+  // Below the reserve (the first callbacks after boot) the honest output is silence while it fills.
+  const reserve = Math.round((audio.ctx?.sampleRate ?? 48000) * 0.12);
+  const usable = Math.max(0, stream.rear - stream.fp - reserve);
+  const want = Math.max(1, Math.min(usable, Math.round(frames * (audio.ratio ?? 1))));
+  const span = Math.min(stream.rear - stream.fp, want);
+  if (span >= frames) {
+    const base = Math.floor(stream.fp);
+    for (let i = 0; i < frames; i++) {
+      chans[0][i] = stream.l[base + i];
+      chans[1][i] = stream.r[base + i];
+    }
+    stream.fp += frames;
+  } else if (span > 0) {
+    const step = span / frames;
+    const last = stream.rear - 1;
+    for (let i = 0; i < frames; i++) {
+      const x = stream.fp + i * step;
+      const a = Math.floor(x);
+      const b = a + 1 < stream.rear ? a + 1 : last;
+      const f = x - a;
+      chans[0][i] = stream.l[a] + (stream.l[b] - stream.l[a]) * f;
+      chans[1][i] = stream.r[a] + (stream.r[b] - stream.r[a]) * f;
+    }
+    stream.fp += span;
+    audio.stretched += 1;
+    audio.ratioMin = Math.min(audio.ratioMin, span / frames);
+  } else {
+    // Nothing is queued and nothing was produced: the machine made no audio in this window, so the
+    // honest output is silence rather than a held value from some earlier moment.
+    chans[0].fill(0);
+    chans[1].fill(0);
+    audio.silenced += 1;
+  }
+  audio.queueMs = Math.round(((stream.rear - stream.fp) * 1000) / (audio.ctx?.sampleRate ?? 48000));
+};
 // The real emulated-time ratio, straight from MAME's scheduler clock (emscripten_sim_time, added to
 // src/emu/machine.cpp). Frame counting cannot give this: the main loop may advance less than a
 // whole frame when a scheduled event is pending, so a frame count overstates the ratio.
@@ -1445,6 +1575,12 @@ const skipFor = () => SKIP_PARAM !== null ? Math.max(0, Number(SKIP_PARAM) || 0)
 // Measurement knob: ?args=-frameskip%203 … extra MAME options, so a probe can ask "is this frame
 // CPU-bound or draw-bound?" without editing the deck. jamma already passes -nothrottle and -video bgfx.
 const EXTRA_ARGS = (params.get("args") ?? "").split(/\s+/).filter(Boolean);
+// Device nature is decided here, before any launch(): the phone-full-bleed stage and the touch deck
+// both key off it, and the module's auto-boot runs the launch path mid-module — a declaration below
+// that call site would be a temporal-dead-zone error that silently kills every cabinet's boot.
+const TOUCH = params.get("touch") === "1" || "ontouchstart" in window ||
+  matchMedia("(pointer: coarse)").matches;
+const PHONE_FULL = params.get("phone") === "1" || TOUCH;
 // The audio device's real rate, asked once (0 if the browser refuses). js_sound has no resampler:
 // MAME must generate at this rate or playback pitch and duration drift. ?sr=0 opts out.
 const SR = params.get("sr") === "0" ? 0 : (() => {
@@ -1466,9 +1602,9 @@ const SHOW_FPS = params.get("fps") === "1";
 // one emulated frame ≈ 735 samples — the differential that makes the crackle audible.
 const PUMP = params.get("pump") === "1";
 // Underrun smoothing. js_sound's tick() fills a short callback by REPEATING the last sample, which
-// is a held DC level — crackle and buzzing on the boards that cannot reach realtime. Stretching the
-// samples that do exist across the callback plays them at the machine's own pace instead. ?glitch=0
-// leaves the backend's pad in place so a probe can A/B the two behaviours.
+// is a held DC level — crackle and buzzing on the boards that cannot reach realtime. This deck
+// instead queues what was produced and plays it back at the machine's own continuous pace (?glitch=0
+// leaves the backend's pad in place so a probe can A/B the two behaviours).
 const SMOOTH = params.get("glitch") !== "0";
 
 // ---- audio instrumentation, installed BEFORE any boot ----
@@ -1488,8 +1624,10 @@ AudioContext.prototype.createScriptProcessor = function (bufferSize, inChannels,
   const node = origCSP.call(this, bufferSize, inChannels, outChannels);
   audio.node = node;
   audio.ctx = this;
-  let sc = null;
   const wrap = (fn) => (event) => {
+    // jamma clears the handler when it tears the node down; the browser may still fire the event
+    // slot once. Calling null throws every callback and cracks the audio — bail silently instead.
+    if (typeof fn !== "function") return;
     audio.ticks += 1;
     // tick() takes one stereo pair per output frame: filling 4096 output frames needs 8192 ring
     // entries, and when the ring is short it repeats the last sample for the rest — that repeat
@@ -1499,6 +1637,19 @@ AudioContext.prototype.createScriptProcessor = function (bufferSize, inChannels,
     audio.level = avail;
     const frames = event.outputBuffer.length;
     const real = avail >= 0 ? Math.min(Math.floor(avail / 2), frames) : 0;
+    // Production RATE, not a per-callback fraction. Chrome fires these callbacks on its own clock, so
+    // "samples this callback got ÷ buffer length" wanders between 0.02 and 1 purely because callbacks
+    // arrive unevenly relative to machine frames — that is the warble heard as 爆音. Dividing the
+    // samples appended by the wall time between callbacks gives a genuine samples/second, which the
+    // playback consumes at as a steady fraction of the sample rate.
+    const now = performance.now();
+    const dt = audio.lastCb ? (now - audio.lastCb) / 1000 : 0;
+    audio.lastCb = now;
+    const sr = audio.ctx?.sampleRate ?? 48000;
+    if (real > 0 && dt > 0.01) {
+      const want = Math.min(1, (real / dt) / sr);
+      audio.ratio = audio.ratio === null ? want : Math.max(0.02, Math.min(1, audio.ratio * 0.9 + want * 0.1));
+    }
     // Shaping keys off `real` (how many frames this callback can actually be filled with), not off
     // the 8192-entry underrun threshold: a fast cabinet can supply 3500 frames for a 4096-frame
     // callback during a hitch without ever falling below the threshold, and that shortfall is padded
@@ -1511,35 +1662,13 @@ AudioContext.prototype.createScriptProcessor = function (bufferSize, inChannels,
       if (real === 0) audio.gaps += 1;
     }
     fn.call(node, event);
-    // A machine running below realtime produces fewer samples than the callback needs. The backend
-    // holds the last sample for the rest — a stuck DC level, audible as crackle. Stretching the
-    // samples that do exist across the whole callback plays them at the machine's actual pace, the
-    // same rate the picture advances at, so audio follows the game instead of stuttering against
-    // it. Linear interpolation between adjacent samples keeps it continuous across callbacks: the
-    // next one resumes where the emulator produced, so there is no seam. At realtime nothing runs.
-    if (SMOOTH && real > 0 && real < frames) {
-      if (!sc || sc[0].length !== frames) sc = [new Float32Array(frames), new Float32Array(frames)];
+    // tick() wrote what the machine could produce into the output buffer; the first `real` frames of
+    // it are real samples. Those go into the queue, and the queue decides what this callback plays,
+    // so playback follows the machine's continuous pace instead of this callback's shortfall.
+    if (SMOOTH) {
       const chans = [event.outputBuffer.getChannelData(0), event.outputBuffer.getChannelData(1)];
-      for (let c = 0; c < 2; c++) sc[c].set(chans[c].subarray(0, real));
-      const step = (real - 1) / (frames - 1);
-      for (let i = 0; i < frames; i++) {
-        const x = i * step;
-        const a = Math.floor(x);
-        const b = a + 1 < real ? a + 1 : real - 1;
-        const f = x - a;
-        chans[0][i] = sc[0][a] + (sc[0][b] - sc[0][a]) * f;
-        chans[1][i] = sc[1][a] + (sc[1][b] - sc[1][a]) * f;
-      }
-      audio.stretched += 1;
-      audio.ratioMin = Math.min(audio.ratioMin, real / frames);
-    } else if (SMOOTH && real === 0) {
-      // Nothing was produced for this callback. The backend would hold whatever sample sat in its
-      // buffer — a stale value from an earlier, possibly loud moment, which reads as a thud or a
-      // held tone. Silence is the honest output for "the machine made no audio in this window".
-      const chans = [event.outputBuffer.getChannelData(0), event.outputBuffer.getChannelData(1)];
-      chans[0].fill(0);
-      chans[1].fill(0);
-      audio.silenced += 1;
+      queueAppend(chans, real);
+      queueFill(chans, frames);
     }
   };
   if (origOna && typeof origOna.set === "function") {
@@ -1772,9 +1901,18 @@ const play = async (i) => {
 const LOCKED = [
   { id: "timecrs3", title: "Time Crisis 3", year: "2003", maker: "Namco",
     why: "System 246：要 tst1dvd0.chd（光盘），这个 WASM 管线没有 CHD 支持；INPUT_PORTS_START(system246) 是空的（光枪走 V185 I/O PCB，driver 没建模），driver 还标 MACHINE_NO_SOUND。ROM 已下并校验 OK/WARN，只是这里跑不出画面声音与枪输入。" },
-  { id: "lamachin", title: "L.A. Machineguns", year: "1998", maker: "Sega",
-    why: "Sega Model 3：已经试过。cores.json 里有 model3 core（src/mame/sega/model3.cpp），ROM 补齐并校验 OK（lamachin.zip + segabill.zip）。你放到桌面的那份「L-A-Machineguns-Rage-of-the-Machines_Arcade_JA\lamachin.zip」我逐文件比对过：37 个文件，与 jamma/roms/lamachin.zip 的 SHA256 全部相同——它是同一套街机 ROM（mpr-*.5…41 这些 Model 3 芯片），不是单独的 Wii 碟，所以没有新增可跑的东西。这套 ROM 只走 jamma/MAME 路线（不用 Dolphin）：刚用它重跑一次 jamma 自带的例页（model3 core + lamachin driver + lamachin.zip / segabill.zip），起机成功（booted lamachin），循环也在跑，但连续 62 秒一帧画面都画不出来（全黑：lit 0 / max 0），呈现帧率约 9 fps、低于实时；投币 + 开始、鼠标射击都没有反馈，连 MAME 自己的 F2 菜单也是黑的——MAME 0.289 把所有 Model 3 游戏都标成 MACHINE_NOT_WORKING | MACHINE_IMPERFECT_GRAPHICS，黑屏是这个 driver 自己的状态，不是移植的毛病。光枪其实有端口（model3.cpp:1804-1814 的 LIGHT0_X/Y），瞄准从来不是障碍；这个 WASM 里也没有软件视频路径，「-video software」会被拒（Value software not supported for option video），强行用它 core 直接 abort（missing function: glShadeModel）。Wii 版走的是本项目已有的 Dolphin 路线，在 ARCADE HITS 柜里验证：那张合碟（SQDE8P）能起机，画面 / 帧率 / 音频都在跑，红外瞄准实测把鼠标瞄准确认到 ±1 px；实测它只走到 Gunblade NY 的内容（建 ID → 记分页输入名字），没出现 L.A. Machineguns 的选人页。约 4.7 GB 的碟也进不了 GitHub Pages 载荷（网页拼不出碟，只有玩家自己选的文件能读）。所以这台不上电，只说明原因。" },
+  { id: "lamachin", title: "L.A. Machineguns", year: "1998", maker: "Sega", chip: "DRIVER NOT WORKING",
+    why: "Model 3 路线按 planetemu 的 merged 清单实测过两次（本地 lamachin.zip 对 model3.cpp 要求的 36 个 CRC 全部校验通过，segabill 的 epr-18022.ic2 也对）：机器能启动——屏幕打印 GB2 初始化阶段 Phase #1 Init → Phase #2 Load ROMs From Cartridge，然后永远停在 Phase #3 Execute / Proceeding，7 分钟也不进入画面。tick 中位 111→160 ms → 呈现帧率只有 6–8 fps；driver 对这一条标 MACHINE_NOT_WORKING | MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_SOUND（头部注释说硬件上能跑，但缺少其他游戏靠 init 里补 ROM 字来绕过的 JTAG 补丁）。L.A. Machineguns / Gunblade NY 的光枪门槛走 Wii 端（Arcade Hits 光盘）那条路验证。" },
 ];
+
+// The two Konami Hornet cabinets move out of the shelf into the lock: MAME 0.289 marks every
+// Silent Scope variant MACHINE_NOT_WORKING with the dualhsxs two-screen layout, the machine reaches
+// no playable state here, and the measured clock-halving experiment made it slower, not faster.
+// They stay visible, dimmed, with the reason — the shelf only lists machines that pass the gate.
+for (const g of LIB.filter((x) => x.id === "sscope" || x.id === "sscope2")) {
+  LIB.splice(LIB.indexOf(g), 1);
+  LOCKED.push({ id: g.id, title: g.title, year: g.year, maker: g.maker, chip: "DRIVER NOT WORKING", why: g.notes });
+}
 
 // ---- why this host cannot power the Wii cabinets, measured rather than assumed ----
 // SharedArrayBuffer — which the Wii engine's worker transport needs — is only handed out when the
@@ -2243,6 +2381,10 @@ async function launch(g) {
   state.skip = skipFor();
   $("shell").style.display = "none";
   $("stage").classList.add("on");
+  // On a phone or a touchscreen handheld the cabinet screen covers the viewport exactly (see the
+  // phonefull CSS); ?phone=1 forces it for the harness. The exit pill replaces the hidden plate.
+  $("stage").classList.toggle("phonefull", PHONE_FULL);
+  $("padExit").hidden = !PHONE_FULL;
   // One-shot boot choreography on the CRT only: power-on collapse + expand. No coin drop here — a
   // coin belongs to a coin, and booting does not insert one. The flash is removed shortly after so
   // screenshots stay comparable.
@@ -2253,6 +2395,9 @@ async function launch(g) {
   bootLines.length = 0;
   audio.ticks = audio.padded = audio.padSamples = audio.padFrames = audio.gaps = audio.stretched = audio.silenced = 0;
   audio.ratioMin = 1;
+  audio.ratio = null;   // each machine has its own production rate; a stale one would mispitch the new cabinet
+  audio.ratioHist = [];
+  audio.lastCb = 0;     // the rate estimate needs a fresh first interval, not one spanning two machines
   audio.shortMin = audio.level = -1;
   diag.frames = [];
   const skip = state.skip;
@@ -2263,8 +2408,12 @@ async function launch(g) {
       // the HUD uses comes back from the bridge.
       state.machine = await mountDolphin(g, log);
     } else {
+      // ?abcore=<name> is a measurement-only override: it boots a *different build of this same
+      // cabinet's core* (the diagnostic variants in cores.json), which ?core= cannot reach because
+      // a tile's own g.core outranks it by design. Nothing on the shipped site passes it.
+      const ab = params.get("abcore");
       state.machine = await boot({
-      core: g.core ? `cores/${g.core}/${g.core}.js` : CORE,
+      core: ab ? `cores/${ab}/${ab}.js` : g.core ? `cores/${g.core}/${g.core}.js` : CORE,
       driver: g.id,
       roms: Object.fromEntries(g.roms.map((r) => [r, `roms/${r}`])),
       canvas: $("canvas"),
@@ -2280,6 +2429,9 @@ async function launch(g) {
         // at the wrong pitch and drifts. Ask the device for its rate and generate at that rate.
         ...(SR ? ["-sr", String(SR)] : []),
         ...(skip > 0 ? ["-frameskip", String(skip)] : []),
+        // Per-cabinet extra MAME options (e.g. "-frameskip 2" on cabinets whose per-frame draw is
+        // the measured bottleneck). Same split rule as EXTRA_ARGS: each item must be one token.
+        ...(Array.isArray(g.args) ? g.args : []),
         ...EXTRA_ARGS,
       ] } : {}),
       onStdout: (line) => { bootLines.push(line); log.textContent += line + "\n"; log.scrollTop = log.scrollHeight; },
@@ -2287,6 +2439,21 @@ async function launch(g) {
     });
     }
     log.textContent += "READY\n";
+    // The wasm SDL only delivers keyboard events after grabKeyboard(), which emscripten fires
+    // on a mousedown over the canvas. Without this grab, coins and start never reach the
+    // machine — cabinets silently sit at INSERT COIN forever (Time Crisis 2 hit exactly this).
+    // button 1 keeps the deck's own gun handler idle (it only reacts to left/right).
+    const cvGrab = $("canvas");
+    const rGrab = cvGrab.getBoundingClientRect();
+    const gx = rGrab.left + 4, gy = rGrab.top + 4;
+    cvGrab.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 1, pointerType: "mouse", clientX: gx, clientY: gy }));
+    cvGrab.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 1, clientX: gx, clientY: gy }));
+    window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, button: 1, pointerType: "mouse", clientX: gx, clientY: gy }));
+    window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 1, clientX: gx, clientY: gy }));
+    // The self-test log keeps the last lines but stops reserving a top strip: on a phone that
+    // band is the space the screen should own. fitStage re-measures with the collapsed log.
+    log.classList.add("done");
+    fitStage();
     // Ready with no credits still says INSERT COIN; updatePlate only shows the title once the deck
     // has actually sent a coin. A console has no credits: inserting the disc is what powers it, so
     // the plate gets the title straight away.
@@ -2413,13 +2580,16 @@ function retunePacing() {
   ml.__deckPaced = true;
   ml.preMainLoop.length = 0;
   const FRAME = 1000 / 60;
-  let due = 0;
+  let last = 0;
+  // Tick as often as the browser can, capped at 60/s. jamma's pace60 keeps a 16.7ms deadline and
+  // skips a tick whenever the browser arrives a few ms early, then resyncs; on a board whose tick
+  // costs ~30ms that made the presentation cadence alternate between a full frame and a cheap
+  // callback, which is what reads as flicker. A cap only engages when the machine is faster than
+  // realtime, so a slow cabinet is never throttled below what it can do.
   ml.preMainLoop.push(() => {
     const t = performance.now();
-    if (due === 0) { due = t + FRAME; return true; }
-    if (t < due - 4) return false;
-    due += FRAME;
-    if (t - due > 2 * FRAME) due = t + FRAME;
+    if (last && t - last < FRAME - 3) return false;
+    last = t;
     return true;
   });
 }
@@ -2428,19 +2598,23 @@ function installDiag() {
   if (diag.installed) return;
   diag.installed = true;
   // Emscripten's loop calls requestAnimationFrame again every tick, so wrapping the callback sees
-  // each tick. preMainLoop hooks fire even when pace60 skips a frame, so hook timing would measure
-  // the browser's cadence; ticks that cost more than 1ms are real emulated frames. This is what
-  // separates "the emulator is slow" from "the browser is slow" — the whole question.
+  // each tick. Every callback is one emulated frame, so all of them are recorded: filtering to
+  // callbacks above 1ms hid the cheap frames and made the tick count an undercount (measured: the
+  // series alternated a ~30ms frame with a ~2ms frame, and only the expensive half was counted).
+  // This is what separates "the emulator is slow" from "the browser is slow" — the whole question.
+  // A probe's own sampling callback sets window.__deckUiCallback while it runs, as the deck's HUD
+  // poll does below; those are UI work, not emulated frames, so they are excluded rather than
+  // counted as a tick (measured: recording them made the tick series alternate a real ~29ms frame
+  // with a ~0ms HUD callback, halving the apparent tick rate).
   const origRAF = window.requestAnimationFrame;
   window.__deckRafWrapped = true;
   window.requestAnimationFrame = (cb) => origRAF((t) => {
     const t0 = performance.now();
     cb(t);
     const t1 = performance.now();
-    if (t1 - t0 > 1) {
-      diag.frames.push({ t: t1, d: t1 - t0 });
-      if (diag.frames.length > 300) diag.frames.splice(0, 150);
-    }
+    if (window.__deckUiCallback) { window.__deckUiCallback = false; return; }
+    diag.frames.push({ t: t1, d: t1 - t0 });
+    if (diag.frames.length > 600) diag.frames.splice(0, 300);
   });
 }
 
@@ -2487,6 +2661,12 @@ function fitStage() {
   if (!stage.classList.contains("on")) return;
   const cab = stage.querySelector(".cab");
   if (!cab) return;
+  if (stage.classList.contains("phonefull")) {
+    // On a phone the screen is pinned to the viewport by CSS: nothing to measure, nothing to fit.
+    stage.style.paddingTop = ""; stage.style.paddingBottom = ""; cab.style.width = "";
+    window.__fitTrace = { phonefull: true, vw: innerWidth, vh: innerHeight, ok: true };
+    return;
+  }
   const shown = (el) => el && !el.hidden && getComputedStyle(el).display !== "none";
 
   // One pass: apply a register, reserve whatever the overlays now actually occupy, and step the
@@ -2615,7 +2795,7 @@ function diagLine() {
     + ` · 帧间隔中位 ${gap.toFixed(1)}ms · 音频欠载 ${pct}%（最低余量 ${short} · 当前 ${ring}）`
     + (SMOOTH
       ? (audio.stretched > 0 || audio.silenced > 0
-        ? ` · 欠载部分按机器速度补样 ${audio.stretched} 次${audio.silenced ? ` · 空窗改静音 ${audio.silenced} 次` : ""}（共 ${audio.padFrames} 帧，最低倍率 ${Math.round(audio.ratioMin * 100)}%）`
+        ? ` · 按 ${Math.round((audio.ratio ?? 1) * 100)}% 恒定速率补样 ${audio.stretched} 次${audio.silenced ? ` · 空窗改静音 ${audio.silenced} 次` : ""}（共 ${audio.padFrames} 帧）`
         : " · 无欠载，未补样")
       : ` · 未补样（glitch=0，欠载 ${audio.padFrames} 帧按旧样保持）`)
     + ` · ${RES.width}×${RES.height}${state.skip ? ` · frameskip ${state.skip}` : ""}`;
@@ -2627,14 +2807,16 @@ function diagLine() {
 //  * aquajet has no stick ports: it uses IPT_PADDLE (lean) + IPT_PEDAL (throttle), whose
 //    keyboard defaults come from inpttype.ipp CORE_INPUT_TYPES_PADDLE / _PEDAL → ← / → and Left Ctrl.
 // Coin/start keys are UI defaults too (inpttype.ipp COIN1 = KEYCODE_5, START1 = KEYCODE_1).
+// Lightgun cabinets aim ABSOLUTELY: the stick/dpad points the crosshair at a screen position
+// (the same synthetic mousemove the finger drag uses), not the coarse arrow-key nudge — on a
+// handheld an analog stick that only nudges is unusable. Buttons follow Xbox conventions:
+// A = fire (gun) / start (stick cabinets), B = pedal tap (gun) / 2P start, X = coin, Y = start (gun).
 const PAD = {
-  tokyowar: { left: "KeyS", right: "KeyF", up: "KeyE", down: "KeyD", accel: null },
-  aquajet: { left: "ArrowLeft", right: "ArrowRight", up: "ArrowUp", down: "ArrowDown", accel: "ControlLeft" },
-  // Lightgun cabinets: the stick nudges the lightgun (MAME's keyboard fallback for LIGHTGUN_X/Y),
-  // Y = trigger, B = pedal. A real pointer aims far more precisely than this.
-  timecris: { left: "ArrowLeft", right: "ArrowRight", up: "ArrowUp", down: "ArrowDown", accel: "ControlLeft", pedal: "AltLeft" },
-  timecrs2: { left: "ArrowLeft", right: "ArrowRight", up: "ArrowUp", down: "ArrowDown", accel: "ControlLeft", pedal: "AltLeft" },
-  crszone: { left: "ArrowLeft", right: "ArrowRight", up: "ArrowUp", down: "ArrowDown", accel: "ControlLeft", pedal: "AltLeft" },
+  tokyowar: { kind: "stick", left: "KeyS", right: "KeyF", up: "KeyE", down: "KeyD", accel: null },
+  aquajet: { kind: "stick", left: "ArrowLeft", right: "ArrowRight", up: "ArrowUp", down: "ArrowDown", accel: "ControlLeft" },
+  timecris: { kind: "gun" },
+  timecrs2: { kind: "gun" },
+  crszone: { kind: "gun" },
 };
 const KEYCHAR = {
   KeyE: "e", KeyD: "d", KeyS: "s", KeyF: "f", Digit5: "5", Digit1: "1", Digit2: "2",
@@ -2651,24 +2833,81 @@ function press(code, on) {
   send(code, on);
 }
 
+// A connected gamepad replaces the on-screen pad and the key legend — on a phone or handheld
+// (ROG Ally etc.) that returns the whole band to the screen. fitStage() re-measures after the swap.
+let padConnected = false;
+function setPadUI(on) {
+  if (on === padConnected) return;
+  padConnected = on;
+  if (on) {
+    $("touchpad").classList.remove("live");
+    $("stage").classList.remove("padlive");
+    $("keyside").hidden = true;
+  } else {
+    $("keyside").hidden = false;
+    if (TOUCH) { $("touchpad").classList.add("live"); $("stage").classList.add("padlive"); }
+  }
+  fitStage();
+}
+addEventListener("gamepadconnected", () => setPadUI(true));
+addEventListener("gamepaddisconnected", () => setPadUI(false));
+
+let padAim = null;      // last stick-aimed screen fraction, so a release does not snap back to centre
+let padEdge = false;    // rising-edge trackers for momentary buttons
+// padCoinWas lives with the launch-time state above (the boot reset clears it there).
+let padStartWas = false;
+let padPedalWas = false;
+
 function poll() {
+  // This loop reads gamepads and updates the HUD; it is deck work, not an emulated frame, so the
+  // tick recorder (installDiag) must not count it.
+  window.__deckUiCallback = true;
   const pad = [...navigator.getGamepads()].find(Boolean);
+  if (pad) setPadUI(true);
   if (pad && state.machine) {
     const ax = (i) => pad.axes[i] ?? 0;
     const dpad = (b) => pad.buttons[b]?.pressed;
     const map = PAD[state.gameId] ?? PAD.tokyowar;
-    if (map.left) press(map.left, ax(0) < -0.4 || dpad(14));
-    if (map.right) press(map.right, ax(0) > 0.4 || dpad(15));
-    if (map.up) press(map.up, ax(1) < -0.4 || dpad(12));
-    if (map.down) press(map.down, ax(1) > 0.4 || dpad(13));
-    if (map.accel) press(map.accel, pad.buttons[3]?.pressed); // Y = throttle (aquajet pedal)
-    press("Digit1", pad.buttons[0]?.pressed);   // A = 1P start (MAME default KEYCODE_1)
+    if (map.kind === "gun") {
+      // Absolute aim: stick vector or dpad direction → a point on the canvas, exactly like a finger drag.
+      const r = gunCanvas.getBoundingClientRect();
+      let fx = null, fy = null;
+      const sx = ax(0), sy = ax(1);
+      if (Math.hypot(sx, sy) > 0.45) { fx = (sx + 1) / 2; fy = (sy + 1) / 2; }
+      if (dpad(14)) fx = 0.04; else if (dpad(15)) fx = 0.96;
+      if (dpad(12)) fy = 0.04; else if (dpad(13)) fy = 0.96;
+      if (fx !== null || fy !== null) {
+        const last = padAim ?? { fx: 0.5, fy: 0.5 };
+        if (fx === null) fx = last.fx;
+        if (fy === null) fy = last.fy;
+        padAim = { fx, fy };
+        aimAt(r.left + fx * r.width, r.top + fy * r.height);
+      }
+      gunPress(GUN.trigger, !!pad.buttons[0]?.pressed);          // A = fire
+    } else {
+      if (map.left) press(map.left, ax(0) < -0.4 || dpad(14));
+      if (map.right) press(map.right, ax(0) > 0.4 || dpad(15));
+      if (map.up) press(map.up, ax(1) < -0.4 || dpad(12));
+      if (map.down) press(map.down, ax(1) > 0.4 || dpad(13));
+      if (map.accel) press(map.accel, pad.buttons[3]?.pressed); // Y = throttle (aquajet pedal)
+      press("Digit1", pad.buttons[0]?.pressed);                  // A = 1P start (MAME default KEYCODE_1)
+    }
     const coinNow = !!pad.buttons[2]?.pressed;  // X = coin 1 (MAME default KEYCODE_5)
     press("Digit5", coinNow);
     if (coinNow && !padCoinWas) coinTally();    // one coin per press, not one per frame held
     padCoinWas = coinNow;
-    if (map.pedal) press(map.pedal, pad.buttons[1]?.pressed); // B = foot pedal on gun cabinets
-    else press("Digit2", pad.buttons[1]?.pressed);            // B = 2P start (MAME default KEYCODE_2)
+    if (!map.accel) {                            // on cabinets without a throttle, Y is start
+      const startNow = !!pad.buttons[3]?.pressed;
+      if (startNow && !padStartWas) pulse("Digit1", 90);
+      padStartWas = startNow;
+    }
+    if (map.kind === "gun") {
+      const pedalNow = !!pad.buttons[1]?.pressed; // B = pedal tap (a momentary switch, never held)
+      if (pedalNow && !padPedalWas) pedalTap();
+      padPedalWas = pedalNow;
+    } else {
+      press("Digit2", pad.buttons[1]?.pressed);   // B = 2P start (MAME default KEYCODE_2)
+    }
     const lb = pad.buttons[4]?.pressed, rb = pad.buttons[5]?.pressed;
     if (lb) state.machine.saveState("deck");
     if (rb) state.machine.loadState("deck");
@@ -2742,10 +2981,27 @@ gunCanvas.addEventListener("wheel", (e) => {
 // adstick devices only consume SDL_MOUSE_MOTION (input_sdl3.cpp), so a finger drag is translated
 // into a synthetic mousemove on the canvas — the same event the mouse path produces. The on-screen
 // pad sends the same synthetic keys as the gamepad shim, so the cabinet cannot tell them apart.
-const TOUCH = params.get("touch") === "1" || "ontouchstart" in window ||
-  matchMedia("(pointer: coarse)").matches;
-const aimAt = (x, y) =>
+// (TOUCH / PHONE_FULL are defined up in the parameter block — the auto-boot needs them early.)
+$("padExit").addEventListener("click", () => exitToLibrary());
+// aimAt maps screen coordinates into the gun's coordinate space. Under phonefull the visible
+// window is an object-fit: cover crop of the picture, so a point on the screen must be converted
+// back into the picture's own coordinates first — otherwise the crosshair lands off the finger by
+// exactly the cropped amount.
+const aimAt = (x, y) => {
+  if ($("stage").classList.contains("phonefull")) {
+    const r = gunCanvas.getBoundingClientRect();
+    const s = Math.max(r.width / RES.width, r.height / RES.height);
+    const ox = (r.width - RES.width * s) / 2, oy = (r.height - RES.height * s) / 2;
+    x = r.left + (x - r.left - ox) / s * (r.width / RES.width);
+    y = r.top + (y - r.top - oy) / s * (r.height / RES.height);
+  }
   gunCanvas.dispatchEvent(new MouseEvent("mousemove", { clientX: x, clientY: y, bubbles: true }));
+  // The console engines' sight listens for pointer events, not mouse events: a synthetic mousemove
+  // alone leaves a Wii remote's IR aim at the screen centre (measured on Gunblade NY — the crosshair
+  // never moved, so tile hit-tests on aim screens could never be passed). Ship both events; the MAME
+  // path consumes the mousemove, the console path consumes the pointermove.
+  gunCanvas.dispatchEvent(new PointerEvent("pointermove", { clientX: x, clientY: y, bubbles: true }));
+};
 const touchPoint = (e) => (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
 gunCanvas.addEventListener("touchstart", (e) => {
   if (!state.gun || !state.machine) return;
@@ -2763,9 +3019,10 @@ gunCanvas.addEventListener("touchmove", (e) => {
 addEventListener("touchend", dropGun);
 addEventListener("touchcancel", dropGun);
 
-// Which buttons a cabinet actually needs: the dpad comes from the same map the gamepad uses, FIRE is
-// the gun trigger on lightgun cabinets and the throttle on Aqua Jet, PEDAL only exists on cabinets
-// with a pedal port, and Tokyo Wars has no fire key at all (its controls are the stick + coin).
+// Which buttons a cabinet actually needs: the dpad comes from the same map the gamepad uses, a gun
+// cabinet shoots by tapping the screen so it gets no FIRE dome, THROTTLE exists only on Aqua Jet,
+// PEDAL only exists on cabinets with a pedal port, and Tokyo Wars has no fire key at all (its
+// controls are the stick + coin).
 function buildTouchPad(g) {
   const pad = $("touchpad");
   if (!TOUCH) { pad.classList.remove("live"); $("stage").classList.remove("padlive"); return; }
@@ -2797,16 +3054,25 @@ function buildTouchPad(g) {
   }
   const fire = $("tFire");
   const pedal = $("tPedal");
-  const fireCode = g.gun ? GUN.trigger : (map ? map.accel : null);
-  fire.dataset.code = fireCode ?? "";
-  fire.dataset.hold = g.gun ? "gun" : "key";
-  fire.textContent = g.gun ? "FIRE" : "THROTTLE";
-  fire.style.display = fireCode ? "" : "none";
+  // A gun cabinet shoots by tapping the screen (the touchstart handler aims and pulls the trigger),
+  // so its touch deck carries no FIRE button — only the buttons this cabinet really has: a PEDAL
+  // dome appears when the cabinet actually has a pedal port, nothing otherwise.
+  if (g.gun) {
+    fire.dataset.code = "";
+    fire.style.display = "none";
+  } else {
+    const fireCode = map ? map.accel : null;
+    fire.dataset.code = fireCode ?? "";
+    fire.dataset.hold = "key";
+    fire.textContent = "THROTTLE";
+    fire.style.display = fireCode ? "" : "none";
+  }
   const pedalCode = g.gun === true ? GUN.pedal : null;
   pedal.dataset.code = pedalCode ?? "";
   pedal.dataset.hold = "gun";
   pedal.style.display = pedalCode ? "" : "none";
-  $("tHint").textContent = g.gun ? "手指拖动屏幕 = 瞄准" : "方向键控制移动";
+  $("tHint").textContent = g.gun === true ? "点屏幕 = 射击 · 拖动 = 瞄准 · PEDAL = 踏板"
+    : g.gun ? "点屏幕 = 射击 · 拖动 = 瞄准" : "方向键控制移动";
   pad.classList.add("live");
   $("stage").classList.add("padlive");
 }
@@ -2872,7 +3138,7 @@ window.__deck = {
   },
   aimRelease: () => { window.dispatchEvent(new PointerEvent("pointerup", { button: 0, bubbles: true })); },
   credits: () => credits,
-  simTime, simPct: () => sim.pct, simWorst: () => sim.worst, ringMs,
+  simTime, simPct: () => sim.pct, simWorst: () => sim.worst, ringMs, streamMs: () => audio.queueMs,
 };
 
 // The library opens on the first cabinet. A resumed or explicitly requested game must NOT be

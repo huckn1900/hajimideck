@@ -13,12 +13,33 @@ function pace60(now = () => performance.now()) {
 var ROM_DIR = "/roms";
 var MUTE_REASON_UI = 2;
 var booted = false;
+async function fetchBytes(url) {
+  const res = await fetch(url);
+  if (!res.ok || (res.headers.get("content-type") ?? "").startsWith("text/html"))
+    return null;
+  return new Uint8Array(await res.arrayBuffer());
+}
 async function toBytes(src) {
   if (typeof src === "string") {
-    const res = await fetch(src);
-    if (!res.ok)
-      throw new Error(`jamma: ${src} -> HTTP ${res.status}`);
-    return new Uint8Array(await res.arrayBuffer());
+    const whole = await fetchBytes(src);
+    if (whole)
+      return whole;
+    const parts = [];
+    for (let i = 0;i < 16; i++) {
+      const p = await fetchBytes(`${src}.p${i}`);
+      if (!p)
+        break;
+      parts.push(p);
+    }
+    if (!parts.length)
+      throw new Error(`jamma: ${src} -> not served`);
+    const out = new Uint8Array(parts.reduce((n, x) => n + x.length, 0));
+    let off = 0;
+    for (const x of parts) {
+      out.set(x, off);
+      off += x.length;
+    }
+    return out;
   }
   if (src instanceof Uint8Array)
     return src;
