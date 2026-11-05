@@ -2094,8 +2094,15 @@ const tickerHalf = `▸ NOW PLAYING ▸ ${tickerLine} ▸ `;
 $("attract").innerHTML = tickerHalf + tickerHalf;
 
 // ---- rom availability ----
+// build-site.ts ships big zips as byte parts <name>.zip.p0…pN, and the loader stitches them back
+// when the whole zip is not served. Availability must accept the parts too: a cabinet whose parts
+// ARE served boots fine, and calling it MISSING would disable a launch that actually works — on
+// GitHub Pages the big cabinets would read "缺 ROM" and clicking them would do nothing.
 const probe = async (name) => {
-  try { return (await fetch(`roms/${name}`, { method: "HEAD" })).ok; } catch { return false; }
+  for (const u of [name, `${name}.p0`]) {
+    try { if (await (await fetch(`roms/${u}`, { method: "HEAD" })).ok) return true; } catch { /* next candidate */ }
+  }
+  return false;
 };
 for (const g of LIB) {
   for (const r of g.roms) if (!(await probe(r))) state.missing.add(`${g.id}/${r}`);
