@@ -11,5 +11,5 @@
   "dolphinReady": true,
   "dolphinWasmBytes": 15175335,
   "note": "GitHub Pages 静态版：没有服务器探测，文件都在仓库里。核心是 .wasm.gz（页面内用 DecompressionStream 解压；Chrome 不支持 br），ROM 是 zip（MAME 自己解）。",
-  "dolphinNote": "Dolphin 的 WebAssembly 核心随本站发布（cores/dolphin/，未压缩——引擎自己取 wasm，没有解压的入口）。它需要 WebGPU + SharedArrayBuffer，也就是需要 cross-origin isolation；GitHub Pages 不能设响应头，所以那台柜位在 Pages 上是锁着的。本地 bun serve.ts 会带 COOP/COEP 头，那台能开。"
+  "dolphinNote": "Dolphin 的 WebAssembly 核心随本站发布（cores/dolphin/，未压缩——引擎自己取 wasm，没有解压的入口）。它需要 WebGPU + SharedArrayBuffer，也就是需要 cross-origin isolation。本站带了一个 service worker（coi-sw.js）把响应重新发成浏览器认可的那对头——实测线上 iso=true、SharedArrayBuffer 可用，所以 Wii 柜在线上能起机，碟片由玩家自己选文件带来。"
 }

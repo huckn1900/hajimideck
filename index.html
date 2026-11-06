@@ -1,6 +1,13 @@
 <!doctype html>
 <html lang="zh">
 <head>
+<script>
+if (!self.crossOriginIsolated && "serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./coi-sw.js").then(function () {
+    if (!navigator.serviceWorker.controller) location.reload();
+  });
+}
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HAJIMIDECK — 街机跑在浏览器里（WebAssembly / MAME 0.289）</title>

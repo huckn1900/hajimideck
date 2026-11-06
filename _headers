@@ -2,9 +2,8 @@
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedding-Policy: require-corp
 
-# The MAME cores are uploaded to Cloudflare gzip-compressed (CF caps one
-# upload at 25 MiB); the browser decompresses them transparently. GitHub
-# Pages ignores this file and serves the original bytes.
+# The MAME cores are uploaded to Cloudflare gzip-compressed (CF caps one upload at 25 MiB);
+# the browser decompresses them transparently. GitHub Pages ignores this file and serves the original bytes.
 /cores/hornet/hornet.wasm
   Content-Encoding: gzip
 /cores/namcos22/namcos22.wasm
