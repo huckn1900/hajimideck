@@ -1,6 +1,6 @@
 /*
   Cross-Origin-Opener-Policy: same-origin
-  Cross-Origin-Embedding-Policy: require-cors
+  Cross-Origin-Embedding-Policy: require-corp
 
 # The MAME cores are uploaded to Cloudflare gzip-compressed (CF caps one
 # upload at 25 MiB); the browser decompresses them transparently. GitHub
