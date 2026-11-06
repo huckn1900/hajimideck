@@ -111,7 +111,12 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
     const pad = gp ? readGamepadInput(gp) : { pressed: new Set(), state: null };
     const all = mergePressedSets(pressed, pad.pressed);
     const state = inputStateFromPressed(all, pad.state);
-    const key = JSON.stringify(state);
+    // The dedup must cover the remote's button bits too: PLUS/MINUS are not GameCube pad
+    // buttons, so a press of ⊕ changes no pad state at all — dedupping on the pad alone made
+    // sendPointer unreachable from any key (measured on Arcade Hits' ranking-name screen: the
+    // IR report never carried the plus bit while KeyP was held, and 「point and press ⊕」
+    // screens stayed waiting forever).
+    const key = JSON.stringify(state) + (gun ? "|" + irButtonBits() : "");
     if (key === lastSent) return;
     lastSent = key;
     host.setInputState?.(state);
@@ -143,6 +148,16 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
     sendState();
   };
   const onKeyUp = (e) => {
+    // The trigger's key path needs its release too: without this, a deck trigger press left
+    // the remote firing forever (measured on Arcade Hits — buttons=1024 and an IR pair stayed
+    // in every report after ControlLeft keyup, so the ID-select screen kept seeing a held
+    // Zapper shot and ignored the d-pad navigation).
+    if (gun && e.code === "ControlLeft") {
+      if (!aiming.firing) return;
+      aiming.firing = false;
+      sendPointer();
+      return;
+    }
     const b = DECK_KEYS[e.code];
     if (!b) return;
     pressed.delete(b);
@@ -172,10 +187,8 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
   // ---- Wii Remote pointer (lightgun cabinets) ----
   // The core's IR camera is a 1024x768 field projected over the video output, so a
   // pointer over the cabinet maps proportionally; the game turns that into a crosshair.
-  // A real remote only reports IR while the trigger is held, so the object is hidden
-  // (size 0) whenever the button is up — the camera then sees nothing, exactly as
-  // released hardware would. Button bits follow WiimoteCommon::ButtonData, and the
-  // mask (~0x60e0) drops the bits that carry accelerometer data in the same field.
+  // Button bits follow WiimoteCommon::ButtonData, and the mask (~0x60e0) drops the bits
+  // that carry accelerometer data in the same field.
   const IR_TRIGGER_BIT = WIIMOTE_BUTTON_BITS.b & WIIMOTE_IR.BUTTON_MASK;
   // On a lightgun cabinet the Wii Remote is the only controller the disc sees — the pad port is
   // not wired to a remote — so the deck's keys have to arrive as remote buttons. Bits are
@@ -194,10 +207,26 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
   };
   // Dolphin's own comment on point size: "small values (2-4) seem to be very typical".
   const IR_POINT_SIZE = 3;
-  // Half the distance between the two clusters, in camera pixels. Kept small on purpose: a wide pair
-  // would push one cluster off the camera field at an edge aim, and a clamped cluster moves the
-  // midpoint the game derives the aim from. 8 px is under a percent of the field either way.
-  const IR_LED_SPACING = 8;
+  // Measured on Arcade Hits (l34/l35): with the bar blobs at size 12 the ID menu pinned its
+  // crosshair and its shot-time hover stopped following the aim. With bar blobs at size 3 (l20/l23:
+  // CAMDBG pts all size 3) the shot-sampled hover followed the aim directly and a held shot at a
+  // highlighted card confirmed. The theory that big LED blobs help the game tell bar from target is
+  // refuted by measurement — the game wants typical small blobs everywhere.
+  const IR_LED_SIZE = IR_POINT_SIZE;
+  // The sensor bar's LEDs sit on the TV, not on the aim. A real remote's camera always sees two
+  // fixed LED clusters, and the game derives its crosshair from (target − the LEDs' virtual point).
+  // The pair used to straddle the aim symmetrically, which put the virtual point ON the aim: the
+  // cursor was always zero, wherever we pointed. Measured on Arcade Hits: the crosshair stayed
+  // fixed at the panel centre through every aim, the ID-slot hover never followed the pointer, and
+  // no letter on the ranking-name screen registered although ⊕/⊖ presses arrived with live points
+  // (the screens answered plain buttons, which is why the menus advanced but aiming never did).
+  // Real hardware reports the bar where the bar physically is, so the two clusters now sit at the
+  // top edge of the camera field, far apart: every aim point inside the field is closer to one LED
+  // than the LEDs are to each other, so a game that pairs the closest clusters still gets the bar,
+  // and the third point is the aim itself.
+  const IR_BAR_Y = 40;
+  const IR_BAR_LEFT_X = 60;
+  const IR_BAR_RIGHT_X = WIIMOTE_IR.CAMERA_RES_X - 60;
   const aiming = { irx: WIIMOTE_IR.CAMERA_RES_X / 2, iry: WIIMOTE_IR.CAMERA_RES_Y / 2, firing: false };
   // Some Wii arcade ports open with a two-player screen that only completes if a second remote is
   // answering: Gunblade NY's "Select the ID you would like to use. Player1 / Player2" panel waits for
@@ -207,21 +236,70 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
   const aimPartners = (() => {
     try { return Number(new URLSearchParams(window.location.search).get("aim2")) > 0 ? [0, 1] : [0]; } catch { return [0]; }
   })();
+  // Decode-shape layouts (measurement knob stays overridable via ?irshape=). Production default is
+  // "baraimpair", measured on Arcade Hits through l7–l56: the ID-select menu's highlight follows the
+  // shot-sampled aim with this layout and the ID confirm goes through (Saving screen reached 11/11);
+  // the plain real-remote shape ("bar3") never produced a cursor at all, and a duplicated aim point
+  // paired into a zero cursor. The game's IR decode order is not known from the disc, so
+  // ?irshape still lets a live cabinet pick another point-slot layout:
+  //   bar3     — LEDs slots 0/1, aim slot 2 (real-remote shape; measured: no cursor ever)
+  //   baraimp  — LEDs slots 0/1, aim duplicated in slots 2/3 (target as a valid pair; cursor ≡ 0)
+  //   aimfirst — aim pair slots 0/1, LEDs slots 2/3 (aim is the closest cluster in either decode)
+  //   baraimpairb / barreal — bar-position variants (both refuted on the ranking-name screen)
+  let irShape = (() => {
+    try { return new URLSearchParams(window.location.search).get("irshape") || "baraimpair"; } catch { return "baraimpair"; }
+  })();
+  // Runtime measurement hooks: reaching the ranking-name screen drifts ±60s per boot, so a
+  // per-shape boot cannot guarantee a decode-shape knob lands on the screen being tested.
+  // The driver switches shape and aim-blob size live, mid-run, once the screen is confirmed.
+  let aimSize = IR_POINT_SIZE;
+  window.__setIrShape = (v) => { if (typeof v === "string") { irShape = v; sendPointer(); } };
+  window.__setIrAimSize = (n) => {
+    if (Number.isFinite(n)) { aimSize = Math.max(1, Math.min(15, Math.round(n))); sendPointer(); }
+  };
   const sendPointer = () => {
     const buttons = irButtonBits();
     // A real remote never reports a single dot: its camera sees the sensor bar's two LED clusters,
     // and Wii titles that ask the player to aim at the screen treat a report whose second cluster is
     // missing as 「the Zapper is not pointing at the TV」. Measured: HOTD's Zapper tutorial looped back
     // to itself through eight presses while a one-point report was live, then created its save file
-    // as soon as a shot went in — the screens that ask for aim are the ones that need the pair.
-    // The aim stays exactly where the pointer is; the two clusters straddle it symmetrically, so a
-    // game reading either point, or their midpoint, gets the same coordinates.
-    const points = aiming.firing
-      ? [
-          { x: aiming.irx - IR_LED_SPACING, y: aiming.iry, size: IR_POINT_SIZE },
-          { x: aiming.irx + IR_LED_SPACING, y: aiming.iry, size: IR_POINT_SIZE },
-        ]
-      : [];
+    // as soon as a shot went in — the screens that ask for aim are the ones that need the bar.
+    // The bar is reported where the bar physically is (see IR_BAR_* above); the third point is the
+    // aim, exactly where the pointer is.
+    // The report streams ALWAYS, not only while the trigger is held. Measured on Arcade Hits: its
+    // ID-select and ranking-name screens hover-highlight a target only while the IR camera keeps
+    // reporting, and with trigger-gated points those screens never saw the pointer at all — the
+    // highlight stayed on one slot through every aim, and no letter on the name screen ever
+    // registered. Real hardware streams the camera continuously; a Zapper game samples it on the
+    // trigger pull, and that sampling is what the trigger bit is for.
+    const led = (x) => ({ x, y: IR_BAR_Y, size: IR_LED_SIZE });
+    const aim = () => ({ x: aiming.irx, y: aiming.iry, size: aimSize });
+    const aimSplit = (dx, dy) => ({
+      x: Math.min(WIIMOTE_IR.CAMERA_RES_X - 1, Math.max(0, aiming.irx + dx)),
+      y: Math.min(WIIMOTE_IR.CAMERA_RES_Y - 1, Math.max(0, aiming.iry + dy)),
+      size: aimSize,
+    });
+    // baraimpairb: same as baraimpair but the LED clusters sit on the BOTTOM edge. Measurement
+    // knob: the ranking-name screen never reacted to aim with the top bar while the ID menu did,
+    // and its cursor stayed pinned — if the game assumes the bar is below the TV (the common Wii
+    // install), aim above a bottom bar is the only report its validity test accepts.
+    const ledBottom = (x) => ({ x, y: WIIMOTE_IR.CAMERA_RES_Y - 40, size: IR_LED_SIZE });
+    const points = irShape === "aimfirst"
+      ? [aim(), aim(), led(IR_BAR_LEFT_X), led(IR_BAR_RIGHT_X)]
+      : irShape === "baraimp"
+        ? [led(IR_BAR_LEFT_X), led(IR_BAR_RIGHT_X), aim(), aim()]
+        : irShape === "baraimpair"
+          ? [led(IR_BAR_LEFT_X), led(IR_BAR_RIGHT_X), aimSplit(22, 10), aimSplit(-22, 10)]
+          : irShape === "baraimpairb"
+            ? [ledBottom(IR_BAR_LEFT_X), ledBottom(IR_BAR_RIGHT_X), aimSplit(22, -10), aimSplit(-22, -10)]
+            // barreal: real sensor-bar geometry — the two LED clusters sit adjacent near the top
+            // centre of the camera field (a physical bar spans a small fraction of the view, not
+            // the screen edges). Measurement knob for the ranking-name screen, which rejected every
+            // aim with edge-cluster bars while the ID menu accepted the same report: if its
+            // validity test matches real LED spacing, this is the shape it accepts.
+            : irShape === "barreal"
+              ? [led(445), led(579), aimSplit(22, 10), aimSplit(-22, 10)]
+              : [led(IR_BAR_LEFT_X), led(IR_BAR_RIGHT_X), aim()];
     for (const index of aimPartners) host.setWiimoteIR?.({ index, buttons, points });
   };
   const aimFromEvent = (e) => {

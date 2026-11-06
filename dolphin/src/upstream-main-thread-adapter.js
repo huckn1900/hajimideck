@@ -212,10 +212,20 @@ export class UpstreamMainThreadAdapter {
       // the browser-Wii Remote patch (core.cpp initialises an emulated remote when
       // Module['dolphinWiimoteInput'] is set); older cores return null here.
       // Coordinates are IR-camera space (0..1023 x 0..767); size 0 hides an object.
+      // Slot order matches a real remote camera report: slots 0/1 are the sensor-bar
+      // LEDs, slot 2 is the aim object the game decodes as its pointer. Cores
+      // built before slot 2 existed ignore the extra arguments.
       setWiimoteIR: optionalCwrap(
         "SetWiimoteIR",
         "number",
-        ["number", "number", "number", "number", "number", "number", "number", "number", "number"]
+        [
+          "number", "number",
+          "number", "number", "number",
+          "number", "number", "number",
+          "number", "number", "number",
+          "number", "number", "number",
+          "number"
+        ]
       ),
       wiimoteUpdateCount: optionalCwrap("DolphinWeb_WiimoteUpdateCount", "number", []),
       wiimoteBuildCalls: optionalCwrap("DolphinWeb_WiimoteBuildCalls", "number", []),
@@ -478,6 +488,8 @@ export class UpstreamMainThreadAdapter {
     this.wiimoteTelemetry.lastPointer = { index, buttons, points };
     const first = points[0] ?? {};
     const second = points[1] ?? {};
+    const third = points[2] ?? {};
+    const fourth = points[3] ?? {};
     this.api?.setWiimoteIR?.(
       index,
       buttons,
@@ -487,6 +499,12 @@ export class UpstreamMainThreadAdapter {
       second.x ?? 0,
       second.y ?? 0,
       second.size ?? 0,
+      third.x ?? 0,
+      third.y ?? 0,
+      third.size ?? 0,
+      fourth.x ?? 0,
+      fourth.y ?? 0,
+      fourth.size ?? 0,
       this.wiimoteGeneration
     );
   }

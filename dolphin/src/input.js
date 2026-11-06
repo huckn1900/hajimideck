@@ -105,7 +105,9 @@ export const WIIMOTE_IR = Object.freeze({
   CAMERA_RES_X: 1024,
   CAMERA_RES_Y: 768,
   MAX_POINT_SIZE: 15,
-  MAX_POINTS: 2,
+  // 4 camera slots as a real remote reports: slots 0/1 sensor-bar LEDs,
+  // slot 2 the aim/target object the game decodes as its pointer, slot 3 spare.
+  MAX_POINTS: 4,
   BUTTON_MASK: 0x9f1f
 });
 

@@ -1001,7 +1001,7 @@ async function handleMessage(type, payload) {
       wiimotePointer = {
         index: payload.index >>> 0,
         buttons: payload.buttons >>> 0,
-        points: Array.isArray(payload.points) ? payload.points.slice(0, 2) : [],
+        points: Array.isArray(payload.points) ? payload.points.slice(0, 4) : [],
         generation: payload.generation >>> 0
       };
       api?.setWiimoteIR?.(wiimotePointer);
@@ -2337,19 +2337,28 @@ function bindApi(module) {
       typeof module._SetXfbFastPaths === "function"
         ? (flags) => ccall("SetXfbFastPaths", "number", ["number"], [flags | 0])
         : null,
-    // The core hook takes one Wii Remote channel plus its two IR camera objects;
-    // a size of 0 means that object is not visible, which is how a real remote
-    // reports while the trigger is released.
+    // The core hook takes one Wii Remote channel plus its four IR camera objects
+    // in real-remote report order (slots 0/1 sensor-bar LEDs, slot 2 the aim
+    // object); a size of 0 means that object is not visible, which is how a real
+    // remote reports while the trigger is released.
     setWiimoteIR:
       typeof module._SetWiimoteIR === "function"
         ? ({ index, buttons, points, generation }) => {
             const first = points?.[0] ?? {};
             const second = points?.[1] ?? {};
+            const third = points?.[2] ?? {};
+            const fourth = points?.[3] ?? {};
             return (
               ccall(
                 "SetWiimoteIR",
                 "number",
                 [
+                  "number",
+                  "number",
+                  "number",
+                  "number",
+                  "number",
+                  "number",
                   "number",
                   "number",
                   "number",
@@ -2369,6 +2378,12 @@ function bindApi(module) {
                   second.x >>> 0,
                   second.y >>> 0,
                   second.size >>> 0,
+                  third.x >>> 0,
+                  third.y >>> 0,
+                  third.size >>> 0,
+                  fourth.x >>> 0,
+                  fourth.y >>> 0,
+                  fourth.size >>> 0,
                   generation >>> 0
                 ]
               ) >>> 0
