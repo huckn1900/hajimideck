@@ -143,9 +143,6 @@ if (!self.crossOriginIsolated && "serviceWorker" in navigator) {
   /* The plate wraps inside its own box instead of scrolling: a strip that scrolls still lays its
      buttons past the cabinet edge, and anything past the edge is off-screen chrome on a zoomed page. */
   #stage.compact .deckplate { gap: 5px; padding: 5px 7px; flex-wrap: wrap; overflow: hidden }
-  /* The control art is a 150px drawing — on a cabinet that narrow it is decoration eating the space
-     the buttons need, so it steps aside and the button row takes the whole line. */
-  #stage.compact .deckplate .ctl { display: none }
   #stage.compact #hud { gap: 4px; flex-wrap: wrap; flex: 1 1 100%; min-width: 0 }
   #stage.compact #hud button { padding: 3px 7px; font-size: 9px; letter-spacing: .04em; white-space: nowrap }
   #stage.compact .plate-label { font-size: 7px; letter-spacing: .1em; max-width: 100%; overflow: hidden;
@@ -162,7 +159,6 @@ if (!self.crossOriginIsolated && "serviceWorker" in navigator) {
   #stage.compact #keyside dl { gap: 3px }
   /* Hanzi at 8px stops being readable, so the legend rows keep 9px even in the compact cabinet. */
   #stage.compact #keyside dt, #stage.compact #keyside dd { font-size: 9px }
-  #stage.compact #keyside .ctl { width: 80px; height: 26px; margin: 6px 0 6px }
   #stage.compact #diag { font-size: 8px; padding: 5px 6px; max-width: min(240px, 24vw) }
   #stage.compact #hud button[data-act="diag"], #stage.compact #hud button[data-act="fps"] { display: none }
   /* In a tight vertical band the light box is pure chrome — on phones and handhelds that height
@@ -278,9 +274,6 @@ if (!self.crossOriginIsolated && "serviceWorker" in navigator) {
   .deckplate.dropping .dropcoin { animation: coinInto .8s cubic-bezier(.3,.8,.5,1) forwards }
   @keyframes coinInto { 0% { opacity: 1; translate: 0 -6px } 55% { opacity: 1; translate: 0 22px }
     100% { opacity: 0; translate: 0 30px } }
-  /* Control art on the plate: the joystick / gun the cabinet is actually driven with. */
-  .ctl { width: 150px; height: 46px; flex: 0 0 auto; filter: drop-shadow(0 0 7px var(--accent)) }
-  .ctl[hidden] { display: none }
   .credits { padding: 6px 9px; border: 2px solid #2f6f96; border-radius: 6px; background: #08111c;
     font: 10px var(--pixel); letter-spacing: .12em; color: var(--gold);
     text-shadow: 0 0 8px rgba(60,224,255,.5) }
@@ -318,7 +311,6 @@ if (!self.crossOriginIsolated && "serviceWorker" in navigator) {
   #keyside { border: 3px solid var(--accent); border-radius: 12px; background: rgba(8,10,14,.93);
     box-shadow: 0 0 36px -14px var(--accent), inset 0 0 0 1px #2a2d36 }
   #keyside h3 { letter-spacing: .22em }
-  #keyside .ctl { width: 120px; height: 38px; margin: 9px 0 8px }
 
   /* Diagnostics = a technician's service tag, taped slightly crooked. */
   #diag { border: 3px solid var(--gold); border-radius: 10px; rotate: -1.1deg;
@@ -767,7 +759,6 @@ if (!self.crossOriginIsolated && "serviceWorker" in navigator) {
   /* Credit counter: cyan digits on glass, like an LED counter above a coin slot. */
   .credits { border: 1px solid rgba(60,224,255,.4); background: #04080f; color: var(--led);
     text-shadow: 0 0 9px var(--rim) }
-  .ctl { filter: drop-shadow(0 0 8px var(--rim)) }
   /* HUD buttons are neon chips; state is still carried by colour, not by decoration. */
   #hud button { border: 1px solid var(--line); border-radius: 10px; color: #c9e6ff;
     background: linear-gradient(#12202f, #060d16); box-shadow: inset 0 1px 0 rgba(255,255,255,.1) }
@@ -922,47 +913,6 @@ if (!self.crossOriginIsolated && "serviceWorker" in navigator) {
     <div class="deckplate">
       <span class="coinslot"></span>
       <span class="dropcoin"></span>
-      <!-- Control art on the coin door: which input this cabinet is driven with. JS shows the
-           variant that matches the driver (stick / lightgun / sniper sight). Decoration only —
-           nothing here is clickable, the real inputs stay the mouse, keys and gamepad. -->
-      <svg class="ctl" id="ctlArt" viewBox="0 0 150 46" aria-hidden="true">
-        <g id="ctlStick">
-          <rect x="4" y="30" width="58" height="14" rx="5" fill="#14202f" stroke="#33546f" stroke-width="2"/>
-          <path d="M33 30V16" stroke="#5f8aa8" stroke-width="4"/>
-          <circle cx="33" cy="12" r="8" fill="var(--accent)"/>
-          <g stroke="#33546f" stroke-width="2" fill="none">
-            <path d="M14 26l-4-4 -4 4"/><path d="M52 26l4-4 4 4"/><path d="M33 5v-4"/>
-          </g>
-          <!-- Buttons are lit hardware, each in its own cool light. -->
-          <circle cx="86" cy="27" r="9" fill="#2f9bff" stroke="#22364c" stroke-width="2"/>
-          <circle cx="112" cy="27" r="9" fill="#2fd8c8" stroke="#22364c" stroke-width="2"/>
-          <circle cx="136" cy="27" r="9" fill="#7b5cff" stroke="#22364c" stroke-width="2"/>
-        </g>
-        <g id="ctlGun" style="display:none">
-          <path d="M8 36h44l10-12h30l6-8h24v10H60z" fill="#14202f" stroke="#33546f" stroke-width="2"/>
-          <path d="M30 24l-8 12" stroke="var(--accent)" stroke-width="3"/>
-          <circle cx="126" cy="14" r="6" fill="none" stroke="var(--accent)" stroke-width="2"/>
-          <path d="M126 5v3M126 23v3M117 14h-3M135 14h3" stroke="var(--accent)" stroke-width="2"/>
-        </g>
-        <g id="ctlSight" style="display:none">
-          <circle cx="40" cy="23" r="16" fill="none" stroke="var(--accent)" stroke-width="2"/>
-          <path d="M40 7v32M24 23h32" stroke="var(--accent)" stroke-width="2"/>
-          <rect x="76" y="17" width="62" height="12" rx="6" fill="#14202f" stroke="#33546f" stroke-width="2"/>
-          <path d="M100 17v12M124 17v12" stroke="#33546f" stroke-width="2"/>
-        </g>
-        <!-- GameCube-style controller: the Wii runs with a GC pad, so this is the real control. -->
-        <g id="ctlPad" style="display:none">
-          <path d="M10 24q-6-10 4-14h26q10 4 4 14q-6 12-17 12q-11 0-17-12z" fill="#14202f" stroke="#33546f" stroke-width="2"/>
-          <circle cx="22" cy="15" r="7" fill="none" stroke="#5f8aa8" stroke-width="2"/>
-          <circle cx="22" cy="15" r="3" fill="var(--accent)"/>
-          <g fill="#33546f"><rect x="12" y="26" width="4" height="10" rx="2"/><rect x="12" y="26" width="10" height="4" rx="2"/></g>
-          <circle cx="46" cy="30" r="6" fill="#2f9bff" stroke="#22364c" stroke-width="2"/>
-          <circle cx="62" cy="24" r="6" fill="#2fd8c8" stroke="#22364c" stroke-width="2"/>
-          <circle cx="78" cy="24" r="6" fill="#7b5cff" stroke="#22364c" stroke-width="2"/>
-          <rect x="96" y="10" width="44" height="10" rx="5" fill="#14202f" stroke="#33546f" stroke-width="2"/>
-          <path d="M102 10v10M126 10v10" stroke="#33546f" stroke-width="2"/>
-        </g>
-      </svg>
       <span class="plate-label" id="cabTitle">INSERT COIN</span>
       <!-- Coin counter: the deck counts the coins it sends (Space / 5 / gamepad X). It is a tally of
            the deck's own coin pulses, not the emulator's credit register — so it is labelled as such. -->
@@ -2394,13 +2344,6 @@ async function launch(g) {
     mq.onerror = () => { mq.parentElement.style.display = "none"; };
     mq.src = g.bannerImg;
   }
-  // Coin-door art follows how this machine is actually controlled: joystick for the Super 22 cabinets,
-  // lightgun for Time Crisis / II / Crisis Zone, sights for Silent Scope's AD_STICK aiming, and a
-  // GameCube pad for the Wii console. Painting the wrong art would be a lie about how the cabinet plays.
-  $("ctlStick").style.display = dolphin || g.gun ? "none" : "";
-  $("ctlGun").style.display = g.gun === true ? "" : "none";
-  $("ctlSight").style.display = g.gun === "aim" ? "" : "none";
-  $("ctlPad").style.display = dolphin ? "" : "none";
   // The plate says what this machine is waiting for. A coin door waits for a coin; a console waits
   // for a disc, and it has no credit counter at all (the CSS drops that chrome for a console stage).
   plateGame = g;
