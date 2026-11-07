@@ -166,7 +166,20 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
   // Mouse on the screen is a controller too: left = A (confirm / accelerate), right = B.
   // On a lightgun cabinet the left button is the remote's trigger instead — aiming is
   // what that cabinet is for, and pad A would double-fire the same click.
+  // The engine may REPLACE the canvas DOM node with a fresh clone when it transfers control to its
+  // worker (core-host's captureStream fallback). Measured on Cloudflare Pages: after that swap the
+  // live #canvas held no listeners at all — a real mouse over the screen moved nothing, and the
+  // remote reported its default aim forever. So screen input listens on window, which the events
+  // bubble to either way, and hit-tests the element BY ID: the id survives the swap, the node
+  // does not.
+  const liveCanvas = () => document.getElementById(canvas.id) || canvas;
+  const overCanvas = (e) => {
+    const rect = liveCanvas().getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0 &&
+      e.clientX >= rect.left && e.clientX < rect.right && e.clientY >= rect.top && e.clientY < rect.bottom;
+  };
   const pointerDown = (e) => {
+    if (!overCanvas(e)) return;
     if (e.isTrusted) armAudio();   // tapping the screen is a real gesture: the speakers may start here
     if (gunDown(e)) return;
     pressed.add(e.button === 2 ? "B" : "A");
@@ -180,7 +193,7 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
   };
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
-  canvas.addEventListener("pointerdown", pointerDown);
+  window.addEventListener("pointerdown", pointerDown);
   window.addEventListener("pointerup", pointerUp);
   window.addEventListener("blur", pointerUp);
 
@@ -257,6 +270,42 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
   window.__setIrAimSize = (n) => {
     if (Number.isFinite(n)) { aimSize = Math.max(1, Math.min(15, Math.round(n))); sendPointer(); }
   };
+  // The bar's position in the camera field is what a game's pointer decode keys on, not the aim:
+  // measured on Arcade Hits, its ID menu drew a cursor that stayed pinned while the aim points moved,
+  // so the decode reads the bar slots and turns their placement into a pointer. These knobs let a
+  // driver scan where the bar is and fit the mapping, instead of guessing the bar's height.
+  // The OEM bar spans 0.2 m between LED clusters; through a 42° IR camera at a normal remote
+  // distance that projects to roughly 150-210 px of the 1024-wide field, not to the field's two
+  // edges. Feeding edge-to-edge clusters is a geometry no real camera ever produces, and a game
+  // that triangulates its pointer from the clusters gets a distorted result from it — which is what
+  // the ID menu's mirrored-x / dropped-y decode looked like. These knobs let a driver fit the
+  // cluster geometry against a screen that draws a cursor before anything ships.
+  const IR_BAR_SEPARATION = IR_BAR_RIGHT_X - IR_BAR_LEFT_X;
+  let barCx = (IR_BAR_LEFT_X + IR_BAR_RIGHT_X) / 2;
+  let barY = IR_BAR_Y;
+  let barSep = IR_BAR_SEPARATION;
+  let ledSize = IR_LED_SIZE;
+  window.__setIrBar = (cx, y) => {
+    if (Number.isFinite(cx)) barCx = Math.min(WIIMOTE_IR.CAMERA_RES_X - 1, Math.max(0, Math.round(cx)));
+    if (Number.isFinite(y)) barY = Math.min(WIIMOTE_IR.CAMERA_RES_Y - 1, Math.max(0, Math.round(y)));
+    sendPointer();
+  };
+  window.__setIrBarSeparation = (px) => {
+    if (Number.isFinite(px)) barSep = Math.max(4, Math.min(WIIMOTE_IR.CAMERA_RES_X - 2, Math.round(px)));
+    sendPointer();
+  };
+  // The pointer's own two emitters: real hardware reports them as a small pair whose spacing the
+  // game reads as distance, so the pair's spread is part of the geometry a title triangulates.
+  let aimPairX = 22;
+  let aimPairY = 10;
+  window.__setIrAimPair = (dx, dy) => {
+    if (Number.isFinite(dx)) aimPairX = Math.max(0, Math.min(200, Math.round(dx)));
+    if (Number.isFinite(dy)) aimPairY = Math.max(0, Math.min(200, Math.round(dy)));
+    sendPointer();
+  };
+  window.__setIrLedSize = (n) => {
+    if (Number.isFinite(n)) { ledSize = Math.max(1, Math.min(15, Math.round(n))); sendPointer(); }
+  };
   const sendPointer = () => {
     const buttons = irButtonBits();
     // A real remote never reports a single dot: its camera sees the sensor bar's two LED clusters,
@@ -272,26 +321,32 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
     // highlight stayed on one slot through every aim, and no letter on the name screen ever
     // registered. Real hardware streams the camera continuously; a Zapper game samples it on the
     // trigger pull, and that sampling is what the trigger bit is for.
-    const led = (x) => ({ x, y: IR_BAR_Y, size: IR_LED_SIZE });
+    const led = (x) => ({ x, y: barY, size: ledSize });
     const aim = () => ({ x: aiming.irx, y: aiming.iry, size: aimSize });
     const aimSplit = (dx, dy) => ({
       x: Math.min(WIIMOTE_IR.CAMERA_RES_X - 1, Math.max(0, aiming.irx + dx)),
       y: Math.min(WIIMOTE_IR.CAMERA_RES_Y - 1, Math.max(0, aiming.iry + dy)),
       size: aimSize,
     });
+    // The default offsets are the measured baraimpair pair: both emitters share the vertical
+    // offset, mirrored horizontally. Only the spread is a geometry choice; the midpoint is what a
+    // title reads.
+    const pair = () => [aimSplit(aimPairX, aimPairY), aimSplit(-aimPairX, aimPairY)];
+    const barLeft = () => Math.max(0, barCx - barSep / 2);
+    const barRight = () => Math.min(WIIMOTE_IR.CAMERA_RES_X - 1, barCx + barSep / 2);
     // baraimpairb: same as baraimpair but the LED clusters sit on the BOTTOM edge. Measurement
     // knob: the ranking-name screen never reacted to aim with the top bar while the ID menu did,
     // and its cursor stayed pinned — if the game assumes the bar is below the TV (the common Wii
     // install), aim above a bottom bar is the only report its validity test accepts.
     const ledBottom = (x) => ({ x, y: WIIMOTE_IR.CAMERA_RES_Y - 40, size: IR_LED_SIZE });
     const points = irShape === "aimfirst"
-      ? [aim(), aim(), led(IR_BAR_LEFT_X), led(IR_BAR_RIGHT_X)]
+      ? [aim(), aim(), led(barLeft()), led(barRight())]
       : irShape === "baraimp"
-        ? [led(IR_BAR_LEFT_X), led(IR_BAR_RIGHT_X), aim(), aim()]
-        : irShape === "baraimpair"
-          ? [led(IR_BAR_LEFT_X), led(IR_BAR_RIGHT_X), aimSplit(22, 10), aimSplit(-22, 10)]
+        ? [led(barLeft()), led(barRight()), aim(), aim()]
+      : irShape === "baraimpair"
+        ? [led(barLeft()), led(barRight()), ...pair()]
           : irShape === "baraimpairb"
-            ? [ledBottom(IR_BAR_LEFT_X), ledBottom(IR_BAR_RIGHT_X), aimSplit(22, -10), aimSplit(-22, -10)]
+            ? [ledBottom(barLeft()), ledBottom(barRight()), aimSplit(22, -10), aimSplit(-22, -10)]
             // barreal: real sensor-bar geometry — the two LED clusters sit adjacent near the top
             // centre of the camera field (a physical bar spans a small fraction of the view, not
             // the screen edges). Measurement knob for the ranking-name screen, which rejected every
@@ -299,36 +354,43 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
             // validity test matches real LED spacing, this is the shape it accepts.
             : irShape === "barreal"
               ? [led(445), led(579), aimSplit(22, 10), aimSplit(-22, 10)]
-              : [led(IR_BAR_LEFT_X), led(IR_BAR_RIGHT_X), aim()];
+              : [led(barLeft()), led(barRight()), aim()];
     for (const index of aimPartners) host.setWiimoteIR?.({ index, buttons, points });
   };
   const aimFromEvent = (e) => {
-    const rect = canvas.getBoundingClientRect();
+    const rect = liveCanvas().getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     aiming.irx = Math.min(WIIMOTE_IR.CAMERA_RES_X - 1, Math.max(0, Math.round(((e.clientX - rect.left) / rect.width) * WIIMOTE_IR.CAMERA_RES_X)));
     aiming.iry = Math.min(WIIMOTE_IR.CAMERA_RES_Y - 1, Math.max(0, Math.round(((e.clientY - rect.top) / rect.height) * WIIMOTE_IR.CAMERA_RES_Y)));
     sendPointer();
   };
+  // A trigger held by a real pointer over the screen is released when the pointer leaves the
+  // screen; a trigger held by a key (ControlLeft, the touch pad) must NOT be cleared by unrelated
+  // pointer moves elsewhere on the page, so the two sources are tracked apart.
+  let pointerFiring = false;
   const gunDown = (e) => {
     if (!gun || e.button !== 0) return false;
     aiming.firing = true;
+    pointerFiring = true;
     aimFromEvent(e);
     return true;
   };
   const gunUp = () => {
     if (!gun || !aiming.firing) return false;
     aiming.firing = false;
+    pointerFiring = false;
     sendPointer();
     return true;
   };
   const aimOff = () => {
-    if (!gun || !aiming.firing) return;
+    if (!gun || !aiming.firing || !pointerFiring) return;
     aiming.firing = false;
+    pointerFiring = false;
     sendPointer();
   };
+  const aimMove = (e) => { if (overCanvas(e)) aimFromEvent(e); else aimOff(); };
   if (gun) {
-    canvas.addEventListener("pointermove", aimFromEvent);
-    canvas.addEventListener("pointerleave", aimOff);
+    window.addEventListener("pointermove", aimMove);
     sendPointer();
   }
 
@@ -338,12 +400,11 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
     clearInterval(poll);
     window.removeEventListener("keydown", onKeyDown);
     window.removeEventListener("keyup", onKeyUp);
-    canvas.removeEventListener("pointerdown", pointerDown);
+    window.removeEventListener("pointerdown", pointerDown);
     window.removeEventListener("pointerup", pointerUp);
     window.removeEventListener("blur", pointerUp);
     if (gun) {
-      canvas.removeEventListener("pointermove", aimFromEvent);
-      canvas.removeEventListener("pointerleave", aimOff);
+      window.removeEventListener("pointermove", aimMove);
     }
     host.pause();
     audio.setMuted(true);
