@@ -689,6 +689,18 @@ export class UpstreamWorkerAdapter {
       .catch((error) => this.onStatus(error.message));
   }
 
+  // Releasing the engine. The worker owns the wasm instance and its heap, so a page that
+  // boots another cabinet has to be able to drop this one instead of stacking a second heap
+  // next to it. Requests are rejected first so nothing waits on a worker that is gone.
+  terminate() {
+    this.rejectAll("engine released");
+    if (this.worker) {
+      this.worker.terminate();
+      this.worker = null;
+    }
+    this.loaded = false;
+  }
+
   reset() {
     if (!this.loaded) {
       return;

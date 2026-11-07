@@ -621,6 +621,13 @@ export class EmulatorHost {
     }
   }
 
+  // Pausing keeps the engine alive for a later resume; a cabinet the visitor is done with
+  // should give its engine back, which is what makes a re-boot cheap rather than additive.
+  terminate() {
+    this.pause();
+    this.adapter.terminate?.();
+  }
+
   reset() {
     this.frame = 0;
     this.lastCoreFrameForFps = 0;

@@ -407,6 +407,9 @@ export async function startDolphin({ canvas, disc, onStatus = () => {}, fullscre
       window.removeEventListener("pointermove", aimMove);
     }
     host.pause();
+    // Leaving the cabinet also releases its engine: the worker holds the wasm instance and
+    // its heap, so a re-boot has to not stack a second one beside the first.
+    if (host.terminate) host.terminate();
     audio.setMuted(true);
   };
 
