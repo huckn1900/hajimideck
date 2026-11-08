@@ -1,3 +1,6 @@
-﻿roms/*.rvz
+roms/*.rvz
 roms/*/*.rvz
 disc/
+# The user's own Virtua Cop Rev-A pack stays on disk as a copy of their download; the site ships
+# roms/vcopa.zip, which is that same set with the Model 1 IO device ROMs merged in.
+roms/Virtua-Cop_Arcade_EN_Ready-to-play-Rev-A.zip
