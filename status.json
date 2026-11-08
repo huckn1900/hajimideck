@@ -3,7 +3,8 @@
   "cores": [
     "namcos22",
     "namcos22_r4650_33mhz",
-    "hornet"
+    "hornet",
+    "model2"
   ],
   "coreReady": true,
   "wasmBytes": 6191548,
