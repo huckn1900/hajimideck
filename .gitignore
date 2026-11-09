@@ -4,3 +4,14 @@ disc/
 # The user's own Virtua Cop Rev-A pack stays on disk as a copy of their download; the site ships
 # roms/vcopa.zip, which is that same set with the Model 1 IO device ROMs merged in.
 roms/Virtua-Cop_Arcade_EN_Ready-to-play-Rev-A.zip
+# Diagnostic cores copied in by hand for ?abcore= measurement. They are never part of
+# build-site.ts's shipped list; if a variant is chosen for the shipped site it gets added
+# there and this ignore no longer covers it. The two cores the tiles now point at —
+# model2_m2b_sharc3 (Gunblade) and model2_m2o_tgp2 (Virtua Cop) — are shipped in build-site.ts
+# and deliberately not listed here.
+cores/model2_m2b_fast/
+cores/model2_m2b_sharc2/
+cores/model2_m2b_sharc4/
+cores/model2_m2b_main2/
+cores/model2_m2b_noq/
+cores/model2_m2o_main2/

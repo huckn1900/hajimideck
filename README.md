@@ -1,7 +1,8 @@
 # 哈基米 deck — Namco arcade cabinets in the browser
 
-Seven arcade cabinets run in this page as WebAssembly (MAME 0.289 compiled with Emscripten, via
-[jamma](https://github.com/b-rucel/jamma)). Open it, pick a cabinet, press 投币 then START.
+The cabinets in this page run as WebAssembly: arcade boards through MAME 0.289 compiled with
+Emscripten (via [jamma](https://github.com/b-rucel/jamma)), and one console cabinet through a second
+engine. Open it, pick a cabinet, press 投币 then START.
 
 Controls on a desktop: mouse = aim (light-gun games), left click = fire, right click = pedal,
 wheel = weapon swap, Space = coin, 1 = start, S/F/E/D = stick. On a phone the pad appears under
@@ -16,6 +17,9 @@ the screen. No keyboard? The on-screen buttons do the same thing.
 | Time Crisis (1995) | playable, ~57–60 fps | light gun, pedal |
 | Time Crisis II (1998) | boots, plays at ~25% of real time | System 23 board; sound follows the machine's pace instead of cracking up |
 | Crisis Zone (2001) | boots, plays at ~22% of real time | System 23 board, same |
+| Virtua Cop (1994) | playable: 38-40 fps inside a level on the plain core, 44-46 fps on this site's core (the cabinet's own screen refresh is ~49Hz, so that is ~nine-tenths of machine speed) | Sega Model 2O; light gun. Its core divides the MB86234 TGP's clock, which is the interpreted device this cabinet pays for |
+| Virtua Cop 2 (1995) | playable: 75-86 fps, above its own screen refresh | Sega Model 2A; light gun, plain core |
+| Gunblade NY (1995) | plays at ~41% of real time: 11 fps on the plain core (unplayable), 20-23 fps inside a mission on this site's core | Sega Model 2B; aiming goes through an analog-stick port, not an absolute light-gun port. Its core divides the ADSP-21062 coprocessor's clock to 1/3 |
 | Silent Scope (1998) | boots only — the language MCU ROMs are BAD_DUMP, so no sound and no playable level | Konami/Hornet board |
 | Silent Scope 2 (2001) | boots only, same reason | |
 | Time Crisis 3 (2004) | not emulated here: System 246 needs a CHD disc image this pipeline has no support for, and its input ports are empty | shown as a locked cabinet |
@@ -23,10 +27,14 @@ the screen. No keyboard? The on-screen buttons do the same thing.
 | Mario Kart Wii (2008) | playable, on a second engine: [wasm-dolphin](https://github.com/dougchansan/wasm-dolphin)'s WebAssembly port of Dolphin. Measured here: 60–73 core fps, 57–71 presented fps, 100–104% game speed, audio running with signal (RMS 0.16–0.21), title → menu → course → driver → race all render real content | console cabinet, GameCube pad; on GitHub Pages it is locked (see below) |
 
 Two boards are slower than realtime on a normal desktop CPU: that is the emulator, not the page.
-Measured negatives: MAME's frameskip option and disabling sound do **not** raise the frame rate,
-and this MAME build has no selectable 68k core, so there is no remaining performance lever. The
-page keeps those cabinets honest instead of pretending — the audio output follows the machine's
-own pace rather than holding a stuck tone.
+Measured negatives: MAME's frameskip option and disabling sound do **not** raise the frame rate, and
+this MAME build has no selectable 68k core. Whether a coprocessor's clock is a lever is
+board-specific, and it was measured per board by swapping cores at one fixed measurement point: on the
+Namco R4650 boards it is not (dividing the main clock made things no better), on Sega Model 2O the
+interpreted TGP is the lever (~+15% in a level), on Sega Model 2B the interpreted ADSP-21062 is the
+lever (~1.8x in a mission), and on both Model 2 boards dividing the **main** CPU clock instead made it
+worse — the game just waits on its own timer events. The page keeps those cabinets honest instead of
+pretending — the audio output follows the machine's own pace rather than holding a stuck tone.
 
 Wii cabinets do not come through the MAME pipeline: MAME 0.289 has no Wii driver and Wii ISOs are not
 usable there. They come through [wasm-dolphin](https://github.com/dougchansan/wasm-dolphin) — upstream
@@ -99,5 +107,5 @@ MAME is GPL-2.0 (the compiled cores are built from MAME 0.289 source in the jamm
 browser audio backend in those cores is JSMAME, BSD-3-Clause. The console cabinet runs
 [wasm-dolphin](https://github.com/dougchansan/wasm-dolphin), a WebAssembly port of Dolphin, which is
 GPL-2.0-or-later like Dolphin itself; its licence is shipped at `dolphin/LICENSE` and its core is
-built from that project's sources. ROM images and disc images are Namco / Konami / Nintendo
+built from that project's sources. ROM images and disc images are Namco / Konami / Sega / Nintendo
 copyrighted works, included here for play and research. The page and its artwork are original.
