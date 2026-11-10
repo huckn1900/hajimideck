@@ -14,6 +14,7 @@ the screen. No keyboard? The on-screen buttons do the same thing.
 | --- | --- | --- |
 | Tokyo Wars (1996) | playable, 60 fps, full simulation speed | joystick + light gun |
 | Aqua Jet (1996) | playable, 60 fps, full simulation speed | joystick |
+| Alpine Racer 2 (1997) | playable: ~32–50 fps inside a race, running at ~76–88% of this cabinet's own pace (higher during its 12–18 s SYSTEM TEST). Needs 2 coins per game and three start presses to get past course / game mode / difficulty | Namco Super 22 ski-racing cabinet; steering is an analog-stick port (ADC.0), so the arrows only work while held |
 | Time Crisis (1995) | playable, ~57–60 fps | light gun, pedal |
 | Time Crisis II (1998) | boots, plays at ~25% of real time | System 23 board; sound follows the machine's pace instead of cracking up |
 | Crisis Zone (2001) | boots, plays at ~22% of real time | System 23 board, same |
