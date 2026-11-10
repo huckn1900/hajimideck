@@ -1043,6 +1043,11 @@ const LIB = [
     hw: "Namco System Super 22 · C71 DSP（TMS320C25）· 滑雪竞速专用机柜（滑雪杆左右摆动）",
     roms: ["alpinr2b.zip"],
     bannerImg: "art/alpinr2b-marquee.png",
+    // Real artwork only, nothing drawn: the cabinet card uses the Namco Europe flyer the user
+    // supplied (it shows the ski-pole cabinet itself), and the tile's screen uses a genuine screenshot.
+    cabinetImg: "art/alpine-racer-2-04505-01.jpg",
+    cabinetCap: "原机机柜（System Super 22 柜体 + 滑雪杆把手），来自 Namco Europe 的宣传单。",
+    posterImg: "art/alpinr2b-screen.png",
     // Measured on the shipped core at ?res=640x480: the picture is a fixed 336x252 block no matter
     // how big the buffer is (only 28% of a generic 4/3 buffer lit), so the plate uses that frame.
     cvFrame: [336, 252],
