@@ -6,7 +6,8 @@
     "hornet",
     "model2",
     "model2_m2o_tgp2",
-    "model2_m2b_sharc3_lg"
+    "model2_m2b_sharc3_lg_o3",
+    "model3_fast_o3"
   ],
   "coreReady": true,
   "wasmBytes": 6191548,
