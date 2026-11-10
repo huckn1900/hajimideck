@@ -2039,6 +2039,8 @@ const LOCKED = [
     why: "System 246：要 tst1dvd0.chd（光盘），这个 WASM 管线没有 CHD 支持；INPUT_PORTS_START(system246) 是空的（光枪走 V185 I/O PCB，driver 没建模），driver 还标 MACHINE_NO_SOUND。ROM 已下并校验 OK/WARN，只是这里跑不出画面声音与枪输入。" },
   { id: "lamachin", title: "L.A. Machineguns", year: "1998", maker: "Sega", chip: "DRIVER NOT WORKING",
     why: "Model 3 路线按 planetemu 的 merged 清单实测过两次（本地 lamachin.zip 对 model3.cpp 要求的 36 个 CRC 全部校验通过，segabill 的 epr-18022.ic2 也对）：机器能启动——屏幕打印 GB2 初始化阶段 Phase #1 Init → Phase #2 Load ROMs From Cartridge，然后永远停在 Phase #3 Execute / Proceeding，7 分钟也不进入画面。tick 中位 111→160 ms → 呈现帧率只有 6–8 fps；driver 对这一条标 MACHINE_NOT_WORKING | MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_SOUND（头部注释说硬件上能跑，但缺少其他游戏靠 init 里补 ROM 字来绕过的 JTAG 补丁）。L.A. Machineguns / Gunblade NY 的光枪门槛走 Wii 端（Arcade Hits 光盘）那条路验证。" },
+  { id: "cobrata", title: "Cobra: The Arcade", year: "2005", maker: "Namco", chip: "DRIVER NOT WORKING",
+    why: "System 246（同一个 driver，和上面那台 Time Crisis 3 一样）：要 sys246 的 BIOS 之外还有 cbr1verb.ic002 + cbr1verb_spr.ic002，以及一张 DVD 影像 cbr1-ha（40GB 硬盘，MAME 用 CHD 存）——这条 WASM 管线没有 CHD 支持。driver 标 MACHINE_NOT_WORKING | MACHINE_NO_SOUND，头部注释写明它要 RAYS I/O PCB 和红外枪 + 红外传感器，这些都没建模。MyAbandonware 这一页（slug t92）只有视频和缩略图，没有 ROM zip，所以连校验都做不了；本地只有一张 sys246.zip（那是这台板子的共享 BIOS，不是游戏 ROM）。" },
 ];
 
 // The two Konami Hornet cabinets move out of the shelf into the lock: MAME 0.289 marks every
