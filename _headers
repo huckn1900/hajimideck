@@ -16,3 +16,5 @@
   Content-Encoding: gzip
 /cores/model2_o3/model2_o3.wasm
   Content-Encoding: gzip
+/cores/model2_m2b_sharc3_lg_noaud_o3/model2_m2b_sharc3_lg_noaud_o3.wasm
+  Content-Encoding: gzip
