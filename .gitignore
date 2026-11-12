@@ -1,4 +1,4 @@
-roms/*.rvz
+﻿roms/*.rvz
 roms/*/*.rvz
 disc/
 # The user's own Virtua Cop Rev-A pack stays on disk as a copy of their download; the site ships
