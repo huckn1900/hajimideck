@@ -14,5 +14,5 @@
   Content-Encoding: gzip
 /cores/namcos22_tc2_deep/namcos22_tc2_deep.wasm
   Content-Encoding: gzip
-/cores/model2/model2.wasm
+/cores/model2_o3/model2_o3.wasm
   Content-Encoding: gzip
