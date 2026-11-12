@@ -19,16 +19,22 @@ cores/model2_m2o_main2/
 cores/model3_noaud/
 
 # Local-only cost probes, kept on disk for ?abcore= measurement but never shipped:
-# model3_fast (audio-off + PPC/3, the predecessor of the shipped model3_fast_o3), the PPC
-# divide probes, the Model 2B quantum-cap probe, and the three Alpine clock/quantum probes.
-# The two cores the tiles now point at — model3_lam_gun (L.A. Machineguns, aim + bound buttons)
-# and namcos22_cz_autoinc (Crisis Zone, read-path auto-advance) — are shipped in build-site.ts
-# and deliberately not listed here.
+# model3_fast (audio-off + PPC/3), the PPC divide probes, the Model 2B quantum-cap probe, and the
+# three Alpine clock/quantum probes. Also kept as measurement baselines the cores a tile no longer
+# points at: model3_fast_o3 (superseded for L.A. Machineguns) and model3_lam_gun (the same LAM knob
+# without the LTO link — it is the baseline the frame-rate comparison was measured against).
+# The cores the tiles now point at are shipped in build-site.ts and deliberately not listed here:
+# model3_lam_gun_o3 (L.A. Machineguns, aim + bound buttons + full LTO link),
+# model2_m2b_sharc3_lg_o3 (Gunblade), model2_m2o_tgp2 (Virtua Cop), namcos22_cz_autoinc (Crisis Zone).
 cores/model3_fast/
 cores/model3_ppc3/
 cores/model3_ppc6/
+cores/model3_fast_o3/
+cores/model3_lam_gun/
 cores/model2_m2b_lg_noq/
+cores/model2_m2o_tgp2_o3/
 cores/namcos22_alp_dsp2/
 cores/namcos22_alp_fast/
 cores/namcos22_alp_q20k/
 cores/namcos22_cz_post_autoinc/
+cores/namcos22_cz_autoinc_o3/
