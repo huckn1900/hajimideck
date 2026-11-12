@@ -40,3 +40,4 @@ cores/namcos22_cz_post_autoinc/
 cores/namcos22_cz_autoinc_o3/
 # measurement core only: staged so ?abcore can be swapped on the live host, never shipped
 cores/model2_m2b_sharc3_lg_o3/
+cores/model2_o3_noaud/
