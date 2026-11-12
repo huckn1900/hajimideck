@@ -28,3 +28,5 @@ cores/model2_m2b_lg_noq/
 cores/namcos22_alp_dsp2/
 cores/namcos22_alp_fast/
 cores/namcos22_alp_q20k/
+cores/namcos22_cz_post_autoinc/
+cores/model3_lam_gun/
